@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>io.github.mtrevisan</groupId>
+	<artifactId>EquationFinder</artifactId>
+	<version>1.0.0</version>
+
+	<packaging>jar</packaging>
+
+	<name>Boxon</name>
+	<description>Library for calculating the equation given the data</description>
+	<url>https://github.com/mtrevisan/EquationFinder</url>
+	<inceptionYear>2022</inceptionYear>
+	<licenses>
+		<license>
+			<name>MIT License</name>
+			<url>https://opensource.org/licenses/MIT</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+	<developers>
+		<developer>
+			<id>mtrevixan</id>
+			<name>Mauro Trevisan</name>
+			<url>https://github.com/mtrevisan/</url>
+			<roles>
+				<role>Administrator</role>
+				<role>Developer</role>
+			</roles>
+			<timezone>Europe/Rome</timezone>
+			<properties>
+				<picUrl>https://i.postimg.cc/5tphfyN6/mtrevixan.jpg</picUrl>
+			</properties>
+		</developer>
+	</developers>
+
+	<issueManagement>
+		<system>GitHub Issues</system>
+		<url>https://github.com/mtrevisan/EquationFinder/issues</url>
+	</issueManagement>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+		<java.version>21</java.version>
+		<maven.compiler.source>21</maven.compiler.source>
+		<maven.compiler.target>21</maven.compiler.target>
+
+		<javadoc.html.version>-html5</javadoc.html.version>
+
+		<!-- Profiles & Build -->
+		<!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-deploy-plugin -->
+		<maven-deploy-plugin.version>3.1.3</maven-deploy-plugin.version>
+		<!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-source-plugin -->
+		<maven-source-plugin.version>3.3.1</maven-source-plugin.version>
+		<!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-javadoc-plugin -->
+		<maven-javadoc-plugin.version>3.11.1</maven-javadoc-plugin.version>
+		<!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-surefire-plugin -->
+		<maven-surefire-plugin.version>3.5.2</maven-surefire-plugin.version>
+		<!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-compiler-plugin -->
+		<maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+		<!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-help-plugin -->
+		<maven-help-plugin.version>3.5.1</maven-help-plugin.version>
+		<!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-shade-plugin -->
+		<maven-shade-plugin.version>3.6.0</maven-shade-plugin.version>
+
+		<!-- Logging -->
+		<!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
+		<slf4j.slf4j-api.version>2.0.16</slf4j.slf4j-api.version>
+		<!-- https://mvnrepository.com/artifact/ch.qos.logback/logback-classic -->
+		<logback.logback-classic.version>1.5.12</logback.logback-classic.version>
+
+		<!-- JUnit -->
+		<!-- https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-engine -->
+		<junit.junit-jupiter-engine.version>5.11.3</junit.junit-jupiter-engine.version>
+	</properties>
+
+	<repositories>
+		<repository>
+			<id>java-net-repo</id>
+			<url>https://maven.java.net/content/repositories/public/</url>
+		</repository>
+		<repository>
+			<id>java-apache-repo</id>
+			<url>https://repo.maven.apache.org/maven2/</url>
+		</repository>
+	</repositories>
+
+	<build>
+		<plugins>
+			<!-- Surefire -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>${maven-surefire-plugin.version}</version>
+				<configuration>
+					<argLine>
+<!--						&#45;&#45;add-opens io.github.mtrevisan.equationfinder/io.github.mtrevisan.equationfinder=ALL-UNNAMED-->
+					</argLine>
+				</configuration>
+			</plugin>
+			<!-- Compiler -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>${maven-compiler-plugin.version}</version>
+				<configuration>
+					<source>${maven.compiler.source}</source>
+					<target>${maven.compiler.target}</target>
+					<encoding>${project.build.sourceEncoding}</encoding>
+					<showDeprecation>true</showDeprecation>
+				</configuration>
+			</plugin>
+			<!-- Help -->
+			<!-- display active profile in compile phase -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-help-plugin</artifactId>
+				<version>${maven-help-plugin.version}</version>
+				<executions>
+					<execution>
+						<id>show-profiles</id>
+						<phase>compile</phase>
+						<goals>
+							<goal>active-profiles</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- Templating -->
+			<!-- https://mvnrepository.com/artifact/org.codehaus.mojo/templating-maven-plugin -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>templating-maven-plugin</artifactId>
+				<version>1.0.0</version>
+				<executions>
+					<execution>
+						<id>generate-version-class</id>
+						<goals>
+							<goal>filter-sources</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- Shade -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>${maven-shade-plugin.version}</version>
+				<executions>
+					<execution>
+						<!-- Run shade goal on package phase -->
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+						<configuration>
+							<minimizeJar>true</minimizeJar>
+							<shadedArtifactAttached>true</shadedArtifactAttached>
+							<shadedClassifierName>shaded</shadedClassifierName>
+							<filters>
+								<!-- FIXME: strengthen the inclusions -->
+								<!-- ClassNotFoundException: ch.qos.logback.classic.boolex.OnMarkerEvaluator-->
+								<filter>
+									<artifact>ch.qos.logback:logback-classic</artifact>
+									<includes>
+										<include>**</include>
+									</includes>
+								</filter>
+							</filters>
+							<transformers>
+								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+									<manifestEntries>
+										<X-Compile-Source-JDK>${maven.compiler.source}</X-Compile-Source-JDK>
+										<X-Compile-Target-JDK>${maven.compiler.target}</X-Compile-Target-JDK>
+										<Built-By>Mauro Trevisan</Built-By>
+										<Build-Jdk>${java.version} (${java.vendor} ${java.vm.version})</Build-Jdk>
+										<Build-OS>${os.name} ${os.arch} ${os.version}</Build-OS>
+									</manifestEntries>
+								</transformer>
+							</transformers>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+	<dependencies>
+		<!-- Logging -->
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>${slf4j.slf4j-api.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<version>${logback.logback-classic.version}</version>
+			<scope>test</scope>
+			<optional>true</optional>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-math3 -->
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-math3</artifactId>
+			<version>3.6.1</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-jexl3 -->
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-jexl3</artifactId>
+			<version>3.4.0</version>
+		</dependency>
+
+		<!-- JUnit -->
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-engine</artifactId>
+			<version>${junit.junit-jupiter-engine.version}</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+</project>
