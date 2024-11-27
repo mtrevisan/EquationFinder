@@ -2,6 +2,7 @@ package io.github.mtrevisan.equationfinder;
 
 import org.apache.commons.jexl3.JexlBuilder;
 import org.apache.commons.jexl3.JexlExpression;
+import org.apache.commons.jexl3.JexlScript;
 import org.apache.commons.math3.analysis.MultivariateFunction;
 import org.apache.commons.math3.analysis.MultivariateVectorFunction;
 import org.apache.commons.math3.optim.InitialGuess;
@@ -18,10 +19,11 @@ import org.apache.commons.jexl3.JexlContext;
 import org.apache.commons.jexl3.JexlEngine;
 import org.apache.commons.jexl3.MapContext;
 
-import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.Deque;
-import java.util.Stack;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.StringJoiner;
 
 
 public class ParameterEstimation{
@@ -47,19 +49,25 @@ public class ParameterEstimation{
 			{3., 4., 30.}
 		};
 
-		//model function: f(x, p) = p1 * x1^2 + p2 * sin(x2) + p3
-		final String functionExpression = "p1 * x1^2 + p2 * sin(x2) + p3";
+		//model function: f(x, p) = p0 * x0^2 + p1 * sin(x1) + p2
+		final String functionExpression = "p0 * x0^2 + p1 * sin(x1) + p2";
+		final Set<String> vars = extractVariables(functionExpression);
+		//FIXME count inputs and parameters
+		for(int i = 0, inputCount = dataTable[0].length - 1; i < inputCount; i ++)
+			if(!vars.remove("x" + i))
+				throw new IllegalArgumentException("Input variable 'x" + i + "' missing");
+
 		final ModelFunction function = parseFunction(functionExpression);
 //		final ModelFunction function = (inputs, params)
 //			-> params[0] * StrictMath.pow(inputs[0], 2) + params[1] * StrictMath.sin(inputs[1]) + params[2];
 
-		//linear constraints: p1, p2, p3 >= 0
+		//linear constraints: p0, p1, p2 >= 0
 		final LinearConstraintSet linearConstraints = new LinearConstraintSet(
-			new LinearConstraint(new double[]{1, 0, 0}, Relationship.GEQ, 0),	// p1 >= 0
-			new LinearConstraint(new double[]{0, 1, 0}, Relationship.GEQ, 0),	// p2 >= 0
-			new LinearConstraint(new double[]{0, 0, 1}, Relationship.GEQ, 0)		// p3 >= 0
+			new LinearConstraint(new double[]{1, 0, 0}, Relationship.GEQ, 0),
+			new LinearConstraint(new double[]{0, 1, 0}, Relationship.GEQ, 0),
+			new LinearConstraint(new double[]{0, 0, 1}, Relationship.GEQ, 0)
 		);
-		//nonlinear constraints: 10 - (p1 + p2) >= 0
+		//nonlinear constraints: 10 - (p0 + p1) >= 0
 		final MultivariateVectorFunction nonLinearConstraint = params -> new double[]{
 			10 - (params[0] + params[1])
 		};
@@ -113,18 +121,30 @@ public class ParameterEstimation{
 	private static ModelFunction parseFunction(final String expression){
 		final String updatedExpression = cleanExpression(expression);
 		final JexlExpression jexlExpression = JEXL_ENGINE.createExpression(updatedExpression);
+		final JexlContext context = new MapContext();
+		context.set("Math", StrictMath.class);
 
 		return (inputs, params) -> {
-			final JexlContext context = new MapContext();
-			context.set("Math", StrictMath.class);
-			context.set("p1", params[0]);
-			context.set("p2", params[1]);
-			context.set("p3", params[2]);
-			context.set("x1", inputs[0]);
-			context.set("x2", inputs[1]);
+			for(int i = 0, length = params.length; i < length; i ++)
+				context.set("p" + i, params[i]);
+			for(int i = 0, length = inputs.length; i < length; i ++)
+				context.set("x" + i, inputs[i]);
 			return ((Number)jexlExpression.evaluate(context))
 				.doubleValue();
 		};
+	}
+
+	private static Set<String> extractVariables(final String expression){
+		final JexlScript script = JEXL_ENGINE.createScript(expression);
+		final Set<List<String>> variables = script.getVariables();
+		final Set<String> vars = new HashSet<>(variables.size());
+		for(final List<String> list : variables){
+			final StringJoiner sj = new StringJoiner(".");
+			for(int j = 0, components = list.size(); j < components; j ++)
+				sj.add(list.get(j));
+			vars.add(sj.toString());
+		}
+		return vars;
 	}
 
 	private static String cleanExpression(final String expression){
@@ -194,9 +214,9 @@ public class ParameterEstimation{
 			final char c = expression.charAt(i);
 			if(c == ')')
 				openParentheses ++;
-			else if(c == '(')
+			else if(openParentheses > 0 && c == '(')
 				openParentheses --;
-			else if((c == '+' || c == '-' || c == '*' || c == '/' || c == ' ') && openParentheses == 0)
+			else if(openParentheses == 0 && (c == '+' || c == '-' || c == '*' || c == '/' || c == ' ' || c == '('))
 				return i + 1;
 		}
 		return 0;
@@ -208,9 +228,9 @@ public class ParameterEstimation{
 			final char c = expression.charAt(i);
 			if(c == '(')
 				openParentheses ++;
-			else if(c == ')')
+			else if(openParentheses > 0 && c == ')')
 				openParentheses --;
-			else if((c == '+' || c == '-' || c == '*' || c == '/' || c == ' ') && openParentheses == 0)
+			else if(openParentheses == 0 && (c == '+' || c == '-' || c == '*' || c == '/' || c == ' ' || c == ')'))
 				return i;
 		}
 		return expression.length();
