@@ -67,6 +67,11 @@
 		<!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-shade-plugin -->
 		<maven-shade-plugin.version>3.6.0</maven-shade-plugin.version>
 
+		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-math3 -->
+		<apache.commons-math3.version>3.6.1</apache.commons-math3.version>
+		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-jexl3 -->
+		<apache.commons-jexl3.version>3.4.0</apache.commons-jexl3.version>
+
 		<!-- Logging -->
 		<!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
 		<slf4j.slf4j-api.version>2.0.16</slf4j.slf4j-api.version>
@@ -204,18 +209,16 @@
 			<optional>true</optional>
 		</dependency>
 
-		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-math3 -->
+		<!-- Apache -->
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-math3</artifactId>
-			<version>3.6.1</version>
+			<version>${apache.commons-math3.version}</version>
 		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-jexl3 -->
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-jexl3</artifactId>
-			<version>3.4.0</version>
+			<version>${apache.commons-jexl3.version}</version>
 		</dependency>
 
 		<!-- JUnit -->
