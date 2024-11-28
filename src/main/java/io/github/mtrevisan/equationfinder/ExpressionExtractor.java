@@ -9,6 +9,7 @@ import org.apache.commons.jexl3.MapContext;
 import org.apache.commons.math3.special.Gamma;
 
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -91,7 +92,7 @@ public final class ExpressionExtractor{
 	static Set<String> extractVariables(final String expression){
 		final JexlScript script = JEXL_ENGINE.createScript(expression);
 		final Set<List<String>> variables = script.getVariables();
-		final Set<String> vars = new HashSet<>(variables.size());
+		final Set<String> vars = new LinkedHashSet<>(variables.size());
 		for(final List<String> list : variables){
 			final StringJoiner sj = new StringJoiner(DOT);
 			for(int j = 0, components = list.size(); j < components; j ++)

@@ -1,0 +1,21 @@
+p0 * x0^2 + p1 * sin(x1) + p2
+
+subject to
+
+p0 + p1 = 10
+p0 >= 0
+p1 >= 0
+p2 >= 0
+
+with input
+
+x0	x1
+
+with data
+
+1	2	10
+2	3	20
+3	4	30
+
+with search metric
+RSS

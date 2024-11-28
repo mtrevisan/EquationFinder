@@ -3,6 +3,7 @@ package io.github.mtrevisan.equationfinder;
 import org.apache.commons.math3.optim.linear.LinearConstraint;
 import org.apache.commons.math3.optim.linear.Relationship;
 
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,7 +19,7 @@ public final class ConstraintExtractor{
 	private ConstraintExtractor(){}
 
 
-	static LinearConstraint parseConstraint(String expression, final int parameterCount){
+	static LinearConstraint parseConstraint(String expression, final Set<String> parameters){
 		expression = PATTERN_SPACE.matcher(expression)
 			.replaceAll(EMPTY_STRING);
 		final String[] parts = PATTERN_SPLIT.splitWithDelimiters(expression, -1);
@@ -29,7 +30,8 @@ public final class ConstraintExtractor{
 		final String operator = parts[1];
 		final double rhs = Double.parseDouble(parts[2]);
 
-		final double[] coefficients = new double[parameterCount];
+		final double[] coefficients = new double[parameters.size()];
+		//TODO put the coefficient in the right index
 		final Matcher matcher = PATTERN_TERM.matcher(lhs);
 		while(matcher.find()){
 			final String parameter = matcher.group(1);

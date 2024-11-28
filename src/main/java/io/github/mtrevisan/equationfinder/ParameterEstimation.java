@@ -24,7 +24,9 @@ import org.apache.commons.math3.optim.nonlinear.scalar.noderiv.BOBYQAOptimizer;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -34,18 +36,11 @@ import java.util.function.Supplier;
 public class ParameterEstimation{
 
 	public static void main(final String[] args) throws IOException{
-		final String problemDataURI = "C:\\mauro\\mine\\projects\\EquationFinder\\src\\main\\resources\\test.txt";
+		final String problemDataURI = "C:\\mauro\\mine\\projects\\EquationFinder\\src\\main\\resources\\test2.txt";
 		final ProblemData problemData = ProblemExtractor.readProblemData(Paths.get(problemDataURI));
 
 		//model function: f(x, p) = p0 * x0^2 + p1 * sin(x1) + p2
 		final String expression = problemData.expression();
-		//linear constraints: p0, p1, p2 >= 0
-//		final String[] constraints = {
-//			"p0 >= 0",
-//			"p1 >= 0",
-//			"p0 + p1 = 10",
-//			"p2 >= 0"
-//		};
 		final String[] constraints = problemData.constraints();
 		//Input-Output table: x1, x2, output
 		final String[] dataInput = problemData.dataInput();
@@ -53,12 +48,13 @@ public class ParameterEstimation{
 		final String searchMetric = problemData.searchMetric();
 
 		final ModelFunction function = ExpressionExtractor.parseExpression(expression, dataInput);
-		final int parameterCount = getParameterCount(expression, dataInput);
+		final Set<String> parameters = ExpressionExtractor.extractVariables(expression);
 
 		final int constraintCount = constraints.length;
 		final LinearConstraint[] linearConstraints = new LinearConstraint[constraintCount];
 		for(int i = 0; i < constraintCount; i ++)
-			linearConstraints[i] = ConstraintExtractor.parseConstraint(constraints[i], parameterCount);
+			//TODO define the matrix (it seems p0 x0 p1 x1 p2)
+			linearConstraints[i] = ConstraintExtractor.parseConstraint(constraints[i], parameters);
 		final LinearConstraintSet linearConstraintsSet = new LinearConstraintSet(linearConstraints);
 //		final LinearConstraintSet linearConstraintsSet = new LinearConstraintSet(
 //			new LinearConstraint(new double[]{1, 0, 0}, Relationship.GEQ, 0),
@@ -96,11 +92,11 @@ public class ParameterEstimation{
 		System.out.println("Optimal Parameters: " + Arrays.toString(solution));
 	}
 
-	private static int getParameterCount(final String expression, final String[] dataInput){
-		final Set<String> parameters = ExpressionExtractor.extractVariables(expression);
+	private static int getParameterCount(final Set<String> parameters, final String[] dataInput){
+		final Collection<String> params = new HashSet<>(parameters);
 		for(int i = 0, inputCount = dataInput.length; i < inputCount; i ++)
-			parameters.remove(dataInput[i]);
-		return parameters.size();
+			params.remove(dataInput[i]);
+		return params.size();
 	}
 
 	//https://stackoverflow.com/questions/16950115/apache-commons-optimization-troubles
