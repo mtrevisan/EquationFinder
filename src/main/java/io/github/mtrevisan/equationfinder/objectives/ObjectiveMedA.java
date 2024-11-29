@@ -17,6 +17,9 @@ import java.util.Arrays;
  */
 public class ObjectiveMedA implements MultivariateFunction{
 
+	public static final String OBJECTIVE_MEDIANT_ABSOLUTE_ERROR = "MedA";
+
+
 	private final ModelFunction function;
 	private final double[][] dataTable;
 

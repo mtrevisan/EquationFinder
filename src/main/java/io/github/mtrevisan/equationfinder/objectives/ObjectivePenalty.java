@@ -52,9 +52,10 @@ public class ObjectivePenalty implements MultivariateFunction{
 
 			final double expected = row[row.length - 1];
 			final double predicted = function.evaluate(params, row);
-			error += expected - predicted;
+			final double delta = expected - predicted;
+			error += Math.max(0., (searchMode == SearchMode.UPPER_BOUND? delta: -delta));
 		}
-		return Math.max(0., (searchMode == SearchMode.UPPER_BOUND? error: -error));
+		return error;
 	}
 
 }

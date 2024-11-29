@@ -7,6 +7,9 @@ import org.apache.commons.math3.analysis.MultivariateFunction;
 /** Maximum error */
 public class ObjectiveMax implements MultivariateFunction{
 
+	public static final String OBJECTIVE_MAXIMUM_ERROR = "Max";
+
+
 	private final ModelFunction function;
 	protected final double[][] dataTable;
 

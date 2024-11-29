@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 
 public final class ProblemExtractor{
 
-	private static final String BEST_FIT_BOUND_SEARCH = "best fit bound search";
+	private static final String BEST_FIT_BOUND_SEARCH = "best fit search";
 	private static final String UPPER_BOUND_SEARCH = "upper bound search";
 	private static final String LOWER_BOUND_SEARCH = "lower bound search";
 	private static final String SUBJECT_TO = "subject to";
@@ -36,7 +36,7 @@ public final class ProblemExtractor{
 		final List<String> lines = Files.readAllLines(problemDataFile);
 
 		SearchMode searchMode = null;
-		String expression = "";
+		String expression = null;
 		final List<String> constraints = new ArrayList<>(0);
 		String[] dataInput = null;
 		final List<double[]> dataTableList = new ArrayList<>(1);
@@ -45,7 +45,7 @@ public final class ProblemExtractor{
 		int section = SECTION_NONE;
 		for(String line : lines){
 			line = line.trim();
-			if(line.isEmpty())
+			if(line.isEmpty() || line.charAt(0) == '#')
 				continue;
 
 			if(section == SECTION_NONE){
@@ -98,7 +98,8 @@ public final class ProblemExtractor{
 		for(int i = 0; i < totalSize; i ++)
 			dataTable[i] = dataTableList.get(i);
 
-		return new ProblemData(searchMode, expression, constraints.toArray(new String[0]), dataInput, dataTable, objectiveSearchMetric);
+		final String[] constraintsArray = constraints.toArray(new String[constraints.size()]);
+		return new ProblemData(searchMode, expression, constraintsArray, dataInput, dataTable, objectiveSearchMetric);
 	}
 
 }

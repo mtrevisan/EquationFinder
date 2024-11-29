@@ -16,6 +16,9 @@ import org.apache.commons.math3.analysis.MultivariateFunction;
  */
 public class ObjectiveMA implements MultivariateFunction{
 
+	public static final String OBJECTIVE_MEAN_ABSOLUTE_ERROR = "MA";
+
+
 	private final ModelFunction function;
 	private final double[][] dataTable;
 

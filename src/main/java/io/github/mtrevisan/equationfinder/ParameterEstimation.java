@@ -45,14 +45,14 @@ public class ParameterEstimation{
 
 		final Map<String, Supplier<MultivariateFunction>> objectiveFunctions = new HashMap<>(8);
 		final ModelFunction function = ExpressionExtractor.parseExpression(expression, dataInput);
-		objectiveFunctions.put("MA", () -> new ObjectiveMA(function, dataTable));
-		objectiveFunctions.put("MAR", () -> new ObjectiveMAR(function, dataTable));
-		objectiveFunctions.put("Max", () -> new ObjectiveMax(function, dataTable));
-		objectiveFunctions.put("MaxR", () -> new ObjectiveMaxR(function, dataTable));
-		objectiveFunctions.put("MedA", () -> new ObjectiveMedA(function, dataTable));
-		objectiveFunctions.put("NSE", () -> new ObjectiveNSE(function, dataTable));
-		objectiveFunctions.put("RMSL", () -> new ObjectiveRMSL(function, dataTable));
-		objectiveFunctions.put("RSS", () -> new ObjectiveRSS(function, dataTable));
+		objectiveFunctions.put(ObjectiveMA.OBJECTIVE_MEAN_ABSOLUTE_ERROR, () -> new ObjectiveMA(function, dataTable));
+		objectiveFunctions.put(ObjectiveMAR.OBJECTIVE_MEAN_ABSOLUTE_RELATIVE_ERROR, () -> new ObjectiveMAR(function, dataTable));
+		objectiveFunctions.put(ObjectiveMax.OBJECTIVE_MAXIMUM_ERROR, () -> new ObjectiveMax(function, dataTable));
+		objectiveFunctions.put(ObjectiveMaxR.OBJECTIVE_MAXIMUM_RELATIVE_ERROR, () -> new ObjectiveMaxR(function, dataTable));
+		objectiveFunctions.put(ObjectiveMedA.OBJECTIVE_MEDIANT_ABSOLUTE_ERROR, () -> new ObjectiveMedA(function, dataTable));
+		objectiveFunctions.put(ObjectiveNSE.OBJECTIVE_NASH_SUTCLIFFE_EFFICIENCY, () -> new ObjectiveNSE(function, dataTable));
+		objectiveFunctions.put(ObjectiveRMSL.OBJECTIVE_ROOT_MEAN_SQUARED_LOG_ERROR, () -> new ObjectiveRMSL(function, dataTable));
+		objectiveFunctions.put(ObjectiveRSS.OBJECTIVE_RESIDUAL_SUM_OF_SQUARES_ERROR, () -> new ObjectiveRSS(function, dataTable));
 		final MultivariateFunction objective = objectiveFunctions.get(searchMetric)
 			.get();
 
@@ -82,7 +82,7 @@ public class ParameterEstimation{
 
 
 		//Optimal Parameters: [-1.1310510817011101, -17.434973897838685, 26.984627983790357]
-		//Optimal Parameters (w/ nlc): [3.7270816439445933, 6.185209157381032, 2.0015957280550607]
+		//Optimal Parameters: [3.7270816439445933, 6.185209157381032, 2.0015957280550607]
 		System.out.println("Optimal Parameters: [3.727081633493055, 6.185209165354761, 2.0015957927716186]");
 		System.out.println("Optimal Parameters: " + Arrays.toString(solution));
 	}

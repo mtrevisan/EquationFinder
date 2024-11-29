@@ -11,6 +11,9 @@ import org.apache.commons.math3.analysis.MultivariateFunction;
  */
 public class ObjectiveNSE implements MultivariateFunction{
 
+	public static final String OBJECTIVE_NASH_SUTCLIFFE_EFFICIENCY = "NSE";
+
+
 	private final ModelFunction function;
 	private final double[][] dataTable;
 

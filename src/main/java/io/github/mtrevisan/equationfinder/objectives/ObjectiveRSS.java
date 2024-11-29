@@ -13,6 +13,9 @@ import org.apache.commons.math3.analysis.MultivariateFunction;
  */
 public class ObjectiveRSS implements MultivariateFunction{
 
+	public static final String OBJECTIVE_RESIDUAL_SUM_OF_SQUARES_ERROR = "RSS";
+
+
 	private final ModelFunction function;
 	private final double[][] dataTable;
 

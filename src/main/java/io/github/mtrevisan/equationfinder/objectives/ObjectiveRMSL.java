@@ -14,6 +14,9 @@ import org.apache.commons.math3.analysis.MultivariateFunction;
  */
 public class ObjectiveRMSL implements MultivariateFunction{
 
+	public static final String OBJECTIVE_ROOT_MEAN_SQUARED_LOG_ERROR = "RMSL";
+
+
 	private final ModelFunction function;
 	private final double[][] dataTable;
 

@@ -15,6 +15,9 @@ import org.apache.commons.math3.analysis.MultivariateFunction;
  */
 public class ObjectiveMAR implements MultivariateFunction{
 
+	public static final String OBJECTIVE_MEAN_ABSOLUTE_RELATIVE_ERROR = "MAR";
+
+
 	private final ModelFunction function;
 	private final double[][] dataTable;
 
