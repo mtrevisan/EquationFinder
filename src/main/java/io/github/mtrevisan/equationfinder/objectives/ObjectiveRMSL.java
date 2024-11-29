@@ -32,7 +32,7 @@ public class ObjectiveRMSL implements MultivariateFunction{
 			final double[] row = dataTable[i];
 
 			final double expected = StrictMath.log1p(row[row.length - 1]);
-			final double predicted = StrictMath.log1p(function.evaluate(row, params));
+			final double predicted = StrictMath.log1p(function.evaluate(params, row));
 			error += StrictMath.pow(expected - predicted, 2.);
 		}
 		return error / length;

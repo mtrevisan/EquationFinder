@@ -1,18 +1,18 @@
 package io.github.mtrevisan.equationfinder.objectives;
 
+import io.github.mtrevisan.equationfinder.Constraint;
 import org.apache.commons.math3.analysis.MultivariateFunction;
-import org.apache.commons.math3.analysis.MultivariateVectorFunction;
 
 
 public class ObjectivePenalty implements MultivariateFunction{
 
 	private final MultivariateFunction multivariateFunction;
-	private final MultivariateVectorFunction nonLinearConstraint;
+	private final Constraint[] constraints;
 
 
-	public ObjectivePenalty(final MultivariateFunction multivariateFunction, final MultivariateVectorFunction nonLinearConstraint){
+	public ObjectivePenalty(final MultivariateFunction multivariateFunction, final Constraint[] constraints){
 		this.multivariateFunction = multivariateFunction;
-		this.nonLinearConstraint = nonLinearConstraint;
+		this.constraints = constraints;
 	}
 
 
@@ -20,11 +20,14 @@ public class ObjectivePenalty implements MultivariateFunction{
 	public double value(final double[] params){
 		final double error = multivariateFunction.value(params);
 
-		//FIXME manage <= or >=
 		double penalty = 0.;
-		final double[] nonLinearConstraints = nonLinearConstraint.value(params);
-		for(int i = 0, length = nonLinearConstraints.length; i < length; i ++)
-			penalty += StrictMath.pow(nonLinearConstraints[i], 2.);
+		for(int i = 0, length = constraints.length; i < length; i ++){
+			final Constraint constraint = constraints[i];
+
+			final double penaltyError = constraint.evaluate(params);
+			if(!constraint.isFeasible(penaltyError))
+				penalty += StrictMath.pow(penaltyError, 2.);
+		}
 
 		return error + penalty;
 	}

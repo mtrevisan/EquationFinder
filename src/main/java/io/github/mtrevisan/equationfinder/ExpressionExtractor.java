@@ -8,8 +8,7 @@ import org.apache.commons.jexl3.JexlScript;
 import org.apache.commons.jexl3.MapContext;
 import org.apache.commons.math3.special.Gamma;
 
-import java.util.HashSet;
-import java.util.LinkedHashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -76,12 +75,24 @@ public final class ExpressionExtractor{
 
 
 	//https://commons.apache.org/proper/commons-jexl/reference/syntax.html
+	static ParameterConstraintFunction parseParameterConstraintExpression(final String expression){
+		final String updatedExpression = cleanExpression(expression);
+		final JexlExpression jexlExpression = JEXL_ENGINE.createExpression(updatedExpression);
+		final JexlContext context = createJexlContext();
+
+		return (params) -> {
+			setContextParameters(context, params);
+			return ((Number)jexlExpression.evaluate(context))
+				.doubleValue();
+		};
+	}
+
 	static ModelFunction parseExpression(final String expression, final String[] dataInput){
 		final String updatedExpression = cleanExpression(expression);
 		final JexlExpression jexlExpression = JEXL_ENGINE.createExpression(updatedExpression);
 		final JexlContext context = createJexlContext();
 
-		return (inputs, params) -> {
+		return (params, inputs) -> {
 			setContextParameters(context, params);
 			setContextInputs(context, dataInput, inputs);
 			return ((Number)jexlExpression.evaluate(context))
@@ -89,10 +100,10 @@ public final class ExpressionExtractor{
 		};
 	}
 
-	static Set<String> extractVariables(final String expression){
+	static List<String> extractVariables(final String expression){
 		final JexlScript script = JEXL_ENGINE.createScript(expression);
 		final Set<List<String>> variables = script.getVariables();
-		final Set<String> vars = new LinkedHashSet<>(variables.size());
+		final List<String> vars = new ArrayList<>(variables.size());
 		for(final List<String> list : variables){
 			final StringJoiner sj = new StringJoiner(DOT);
 			for(int j = 0, components = list.size(); j < components; j ++)

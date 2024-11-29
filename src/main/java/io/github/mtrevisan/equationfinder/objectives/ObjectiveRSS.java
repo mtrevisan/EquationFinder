@@ -31,7 +31,7 @@ public class ObjectiveRSS implements MultivariateFunction{
 			final double[] row = dataTable[i];
 
 			final double expected = row[row.length - 1];
-			final double predicted = function.evaluate(row, params);
+			final double predicted = function.evaluate(params, row);
 			error += StrictMath.pow(expected - predicted, 2.);
 		}
 		return error / length;

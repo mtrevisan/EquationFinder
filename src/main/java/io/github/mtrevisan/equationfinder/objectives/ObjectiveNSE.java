@@ -42,7 +42,7 @@ public class ObjectiveNSE implements MultivariateFunction{
 			final double[] row = dataTable[i];
 
 			final double observed = StrictMath.log1p(row[row.length - 1]);
-			final double predicted = StrictMath.log1p(function.evaluate(row, params));
+			final double predicted = StrictMath.log1p(function.evaluate(params, row));
 
 			//sum in numerator (squares of logarithmic errors)
 			numerator += StrictMath.pow(observed - predicted, 2.);

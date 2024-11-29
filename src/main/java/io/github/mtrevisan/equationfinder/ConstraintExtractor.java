@@ -1,58 +1,75 @@
 package io.github.mtrevisan.equationfinder;
 
-import org.apache.commons.math3.optim.linear.LinearConstraint;
 import org.apache.commons.math3.optim.linear.Relationship;
 
-import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
 public final class ConstraintExtractor{
 
-	private static final String EMPTY_STRING = "";
-	private static final Pattern PATTERN_SPACE = Pattern.compile("\\s+");
-	private static final Pattern PATTERN_TERM = Pattern.compile("([+-]?\\d*\\.?\\d*)\\*?p(\\d+)");
 	private static final Pattern PATTERN_SPLIT = Pattern.compile("[<>]?=");
+
+	private static final String GREATER_OR_EQUAL = ">=";
+	private static final String LOWER_OR_EQUAL = "<=";
+	private static final String EQUAL = "=";
+	private static final String ZERO = "0";
+	private static final String MINUS = "-";
+	private static final String PARENTHESIS_OPEN = "(";
+	private static final String PARENTHESIS_CLOSE = ")";
+	private static final String EMPTY = "";
 
 
 	private ConstraintExtractor(){}
 
 
-	static LinearConstraint parseConstraint(String expression, final Set<String> parameters){
-		expression = PATTERN_SPACE.matcher(expression)
-			.replaceAll(EMPTY_STRING);
+	static boolean parseBasicConstraint(final String expression, final double[] lowerBounds, final double[] upperBounds){
+		final String[] parts = PATTERN_SPLIT.splitWithDelimiters(expression, -1);
+		try{
+			if(parts.length != 3 || !isValidParameter(parts[0]))
+				throw new IllegalArgumentException("Invalid constraint format: " + expression);
+		}
+		catch(final NumberFormatException ignored){
+			return false;
+		}
+
+		final int parameterIndex = Integer.parseInt(parts[0].trim().substring(1));
+		final String operator = parts[1].trim();
+		final double rhs = Double.parseDouble(parts[2].trim());
+
+		switch(operator){
+			case GREATER_OR_EQUAL -> lowerBounds[parameterIndex] = rhs;
+			case LOWER_OR_EQUAL -> upperBounds[parameterIndex] = rhs;
+			default -> throw new IllegalArgumentException("Invalid operator: " + operator);
+		}
+		return true;
+	}
+
+	private static boolean isValidParameter(final String parameter){
+		return (parameter.length() > 1
+			&& parameter.charAt(0) == 'p'
+			&& Integer.parseInt(parameter.substring(1)) >= 0);
+	}
+
+	static Constraint parseComplexConstraint(final String expression){
 		final String[] parts = PATTERN_SPLIT.splitWithDelimiters(expression, -1);
 		if(parts.length != 3)
 			throw new IllegalArgumentException("Invalid constraint format: " + expression);
 
-		final String lhs = parts[0];
-		final String operator = parts[1];
-		final double rhs = Double.parseDouble(parts[2]);
+		final String lhs = parts[0].trim();
+		final String operator = parts[1].trim();
+		final String rhs = parts[2].trim();
 
-		final double[] coefficients = new double[parameters.size()];
-		//TODO put the coefficient in the right index
-		final Matcher matcher = PATTERN_TERM.matcher(lhs);
-		while(matcher.find()){
-			final String parameter = matcher.group(1);
-			final int parameterIndex = Integer.parseInt(matcher.group(2));
-
-			final double coefficient = (parameter.isEmpty() || parameter.equals("+")
-				? 1
-				: (parameter.equals("-")? -1: Double.parseDouble(parameter)));
-
-			coefficients[parameterIndex] = coefficient;
-		}
-
-		// Determina la relazione
-		Relationship relationship = switch(operator){
-			case ">=" -> Relationship.GEQ;
-			case "<=" -> Relationship.LEQ;
-			case "=" -> Relationship.EQ;
+		final Relationship relationship = switch(operator){
+			case GREATER_OR_EQUAL -> Relationship.GEQ;
+			case LOWER_OR_EQUAL -> Relationship.LEQ;
+			case EQUAL -> Relationship.EQ;
 			default -> throw new IllegalArgumentException("Invalid operator: " + operator);
 		};
 
-		return new LinearConstraint(coefficients, relationship, rhs);
+		final String constraintExpression = lhs
+			+ (!rhs.equals(ZERO)? MINUS + PARENTHESIS_OPEN + rhs + PARENTHESIS_CLOSE: EMPTY);
+		final ParameterConstraintFunction function = ExpressionExtractor.parseParameterConstraintExpression(constraintExpression);
+		return new Constraint(function, relationship);
 	}
 
 }

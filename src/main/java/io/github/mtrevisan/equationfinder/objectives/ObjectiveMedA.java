@@ -35,7 +35,7 @@ public class ObjectiveMedA implements MultivariateFunction{
 			final double[] row = dataTable[i];
 
 			final double expected = row[row.length - 1];
-			final double predicted = function.evaluate(row, params);
+			final double predicted = function.evaluate(params, row);
 			errors[i] = Math.abs(expected - predicted);
 		}
 

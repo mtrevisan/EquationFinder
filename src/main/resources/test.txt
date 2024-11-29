@@ -5,6 +5,7 @@ subject to
 p0 >= 0
 p1 >= 0
 p2 >= 0
+p0 + p1 = 10
 
 with input
 
