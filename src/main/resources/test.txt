@@ -1,3 +1,5 @@
+best fit bound search
+
 p0 * x0^2 + p1 * sin(x1) + p2
 
 subject to

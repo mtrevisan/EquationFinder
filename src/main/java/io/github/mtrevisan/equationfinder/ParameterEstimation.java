@@ -30,13 +30,13 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 
-//TODO upper/lower bound search
 public class ParameterEstimation{
 
 	public static void main(final String[] args) throws IOException{
 		final String problemDataURI = "C:\\mauro\\mine\\projects\\EquationFinder\\src\\main\\resources\\test.txt";
 		final ProblemData problemData = ProblemExtractor.readProblemData(Paths.get(problemDataURI));
 
+		final SearchMode searchMode = problemData.searchMode();
 		final String expression = problemData.expression();
 		final String[] constraints = problemData.constraints();
 		final String[] dataInput = problemData.dataInput();
@@ -53,7 +53,7 @@ public class ParameterEstimation{
 		objectiveFunctions.put("NSE", () -> new ObjectiveNSE(function, dataTable));
 		objectiveFunctions.put("RMSL", () -> new ObjectiveRMSL(function, dataTable));
 		objectiveFunctions.put("RSS", () -> new ObjectiveRSS(function, dataTable));
-		final MultivariateFunction objectiveFunction = objectiveFunctions.get(searchMetric)
+		final MultivariateFunction objective = objectiveFunctions.get(searchMetric)
 			.get();
 
 		final List<String> parameters = ExpressionExtractor.extractVariables(expression);
@@ -76,7 +76,9 @@ public class ParameterEstimation{
 		final double[] initialGuess = {1., 1., 1.};
 
 		final Constraint[] complexConstraintsArray = complexConstraints.toArray(new Constraint[complexConstraints.size()]);
-		final double[] solution = optimize(objectiveFunction, bounds, complexConstraintsArray, initialGuess, 1_000);
+		final MultivariateFunction objectiveFunction = new ObjectivePenalty(objective, complexConstraintsArray, searchMode,
+			function, dataTable);
+		final double[] solution = optimize(objectiveFunction, bounds, initialGuess, 1_000);
 
 
 		//Optimal Parameters: [-1.1310510817011101, -17.434973897838685, 26.984627983790357]
@@ -93,16 +95,14 @@ public class ParameterEstimation{
 	}
 
 	//https://stackoverflow.com/questions/16950115/apache-commons-optimization-troubles
-	private static double[] optimize(final MultivariateFunction objective, final SimpleBounds bounds,
-			final Constraint[] complexConstraints, final double[] initialGuess, final int maxIterations){
+	private static double[] optimize(final MultivariateFunction objectiveFunction, final SimpleBounds bounds, final double[] initialGuess,
+			final int maxIterations){
 		//numberOfInterpolationPoints must be in [n + 2, (n + 1) · (n + 2) / 2]
 		final BOBYQAOptimizer optimizer = new BOBYQAOptimizer(2 * initialGuess.length + 1);
 
-		final MultivariateFunction nonLinearObjectiveFunction = new ObjectivePenalty(objective, complexConstraints);
-
 		final PointValuePair result = optimizer.optimize(
 			GoalType.MINIMIZE,
-			new ObjectiveFunction(nonLinearObjectiveFunction),
+			new ObjectiveFunction(objectiveFunction),
 			bounds,
 			new InitialGuess(initialGuess),
 			new MaxEval(maxIterations)

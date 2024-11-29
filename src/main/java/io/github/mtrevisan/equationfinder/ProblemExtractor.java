@@ -11,16 +11,20 @@ import java.util.regex.Pattern;
 
 public final class ProblemExtractor{
 
+	private static final String BEST_FIT_BOUND_SEARCH = "best fit bound search";
+	private static final String UPPER_BOUND_SEARCH = "upper bound search";
+	private static final String LOWER_BOUND_SEARCH = "lower bound search";
 	private static final String SUBJECT_TO = "subject to";
 	private static final String WITH_INPUT = "with input";
 	private static final String WITH_DATA = "with data";
 	private static final String WITH_SEARCH_METRIC = "with search metric";
 
 	private static final int SECTION_NONE = 0;
-	private static final int SECTION_CONSTRAINTS = 1;
-	private static final int SECTION_INPUT = 2;
-	private static final int SECTION_DATA = 3;
-	private static final int SECTION_SEARCH_METRIC = 4;
+	private static final int SECTION_OBJECTIVE = 1;
+	private static final int SECTION_CONSTRAINTS = 2;
+	private static final int SECTION_INPUT = 3;
+	private static final int SECTION_DATA = 4;
+	private static final int SECTION_SEARCH_METRIC = 5;
 
 	private static final Pattern PATTERN_DATA = Pattern.compile("\\s+");
 
@@ -31,11 +35,12 @@ public final class ProblemExtractor{
 	static ProblemData readProblemData(final Path problemDataFile) throws IOException{
 		final List<String> lines = Files.readAllLines(problemDataFile);
 
+		SearchMode searchMode = null;
 		String expression = "";
 		final List<String> constraints = new ArrayList<>(0);
 		String[] dataInput = null;
 		final List<double[]> dataTableList = new ArrayList<>(1);
-		String searchMetric = null;
+		String objectiveSearchMetric = null;
 
 		int section = SECTION_NONE;
 		for(String line : lines){
@@ -43,7 +48,18 @@ public final class ProblemExtractor{
 			if(line.isEmpty())
 				continue;
 
-			if(line.startsWith(SUBJECT_TO)){
+			if(section == SECTION_NONE){
+				if(line.equals(UPPER_BOUND_SEARCH))
+					searchMode = SearchMode.UPPER_BOUND;
+				else if(line.equals(LOWER_BOUND_SEARCH))
+					searchMode = SearchMode.LOWER_BOUND;
+				else if(line.equals(BEST_FIT_BOUND_SEARCH))
+					searchMode = SearchMode.APPROXIMATE;
+
+				section = SECTION_OBJECTIVE;
+				continue;
+			}
+			else if(line.startsWith(SUBJECT_TO)){
 				section = SECTION_CONSTRAINTS;
 				continue;
 			}
@@ -60,7 +76,7 @@ public final class ProblemExtractor{
 				continue;
 			}
 
-			if(section == SECTION_NONE)
+			if(section == SECTION_OBJECTIVE)
 				expression = line;
 			else if(section == SECTION_CONSTRAINTS)
 				constraints.add(line);
@@ -74,7 +90,7 @@ public final class ProblemExtractor{
 				dataTableList.add(row);
 			}
 			else if(section == SECTION_SEARCH_METRIC)
-				searchMetric = line;
+				objectiveSearchMetric = line;
 		}
 
 		final int totalSize = dataTableList.size();
@@ -82,7 +98,7 @@ public final class ProblemExtractor{
 		for(int i = 0; i < totalSize; i ++)
 			dataTable[i] = dataTableList.get(i);
 
-		return new ProblemData(expression, constraints.toArray(new String[0]), dataInput, dataTable, searchMetric);
+		return new ProblemData(searchMode, expression, constraints.toArray(new String[0]), dataInput, dataTable, objectiveSearchMetric);
 	}
 
 }
