@@ -74,7 +74,8 @@ public class ParameterEstimation{
 		}
 		final SimpleBounds bounds = new SimpleBounds(lowerBounds, upperBounds);
 
-		final double[] initialGuess = {1., 1., 1.};
+		final double[] initialGuess = new double[parameterCount];
+		Arrays.fill(initialGuess, 1.);
 
 		final Constraint[] complexConstraintsArray = complexConstraints.toArray(new Constraint[complexConstraints.size()]);
 		final MultivariateFunction objectiveFunction = new ObjectivePenalty(objective, complexConstraintsArray, searchMode,
