@@ -33,7 +33,8 @@ import java.util.function.Supplier;
 public class ParameterEstimation{
 
 	public static void main(final String[] args) throws IOException{
-		final String problemDataURI = "C:\\mauro\\mine\\projects\\EquationFinder\\src\\main\\resources\\test.txt";
+//		final String problemDataURI = "C:\\mauro\\mine\\projects\\EquationFinder\\src\\main\\resources\\test.txt";
+		final String problemDataURI = "C:\\Users\\mauro\\Projects\\EquationFinder\\src\\main\\resources\\\\test.txt";
 		final ProblemData problemData = ProblemExtractor.readProblemData(Paths.get(problemDataURI));
 
 		final SearchMode searchMode = problemData.searchMode();

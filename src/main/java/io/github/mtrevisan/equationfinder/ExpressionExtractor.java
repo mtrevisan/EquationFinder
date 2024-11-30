@@ -49,8 +49,6 @@ public final class ExpressionExtractor{
 	private static final String FUNCTION_POWER = "pow";
 	private static final String POWER = "^";
 	private static final String POW_FUNCTION = FUNCTION_POWER + PARENTHESIS_OPEN;
-	//regex to identify powers in the form "base^exponent"
-	private static final Pattern X_POWER_Y_PATTERN = Pattern.compile("(\\([^()]*\\)|[^()^+*/\\s-]+)\\^(\\([^()]*\\)|[^()^+*/\\s-]+)");
 	private static final String MULTIPLICATION = "*";
 	private static final String BASE_DELIMITERS = "+-*·×/ ,";
 	private static final String BASE_START_DELIMITERS = BASE_DELIMITERS + PARENTHESIS_OPEN;
@@ -125,7 +123,7 @@ public final class ExpressionExtractor{
 		expression = replaceFunction(expression, PATTERN_ATANH, ATANH);
 		expression = PATTERN_SIGN.matcher(expression)
 			.replaceAll(SIGNUM);
-		expression = convertPowerToMathPow2(expression);
+		expression = convertPowerToMathPow(expression);
 		expression = substituteJavaFunction(expression);
 		expression = substituteApacheFunction(expression);
 		return expression;
@@ -183,81 +181,7 @@ public final class ExpressionExtractor{
 		return result.toString();
 	}
 
-	//FIXME
-	private static String convertPowerToMathPow2(final String expression){
-		final StringBuilder result = new StringBuilder();
-		for(int i = 0, length = expression.length(); i < length; i ++){
-			final char current = expression.charAt(i);
-
-			if(current == '^'){
-				final int baseStart = findBaseStart(expression, i - 1);
-				final String base = expression.substring(baseStart, i)
-					.trim();
-
-//				int exponentEnd = findExponentEnd(expression, i + 1);
-//				final List<String> exponents = new ArrayList<>(1);
-//				String exponent = expression.substring(i + 1, exponentEnd).trim();
-//				exponents.add(exponent);
-//
-//				while(exponent.contains("^")){
-//					exponentEnd = findExponentEnd(exponent, i + 1);
-//					exponents.add(exponent.substring(i + 1, exponentEnd).trim());
-//
-//					i = exponentEnd - 1;
-//				}
-//				if(exponents.size() > 1){
-//					final StringJoiner sj = new StringJoiner(PARENTHESIS_CLOSE + MULTIPLICATION + PARENTHESIS_OPEN,
-//						PARENTHESIS_OPEN, PARENTHESIS_CLOSE);
-//					for(int j = 0, exponentCount = exponents.size(); j < exponentCount; j ++)
-//						sj.add(exponents.get(j));
-//					exponent = sj.toString();
-//				}
-
-				final int exponentEnd = findExponentEnd(expression, i + 1);
-				final String exponent = expression.substring(i + 1, exponentEnd)
-					.trim();
-
-				result.replace(baseStart, i, FUNCTION_POWER + PARENTHESIS_OPEN + base + COMMA)
-					.append(exponent)
-					.append(PARENTHESIS_CLOSE);
-
-				i = exponentEnd - 1;
-			}
-			else
-				result.append(current);
-		}
-		return result.toString();
-	}
-
-	private static int findBaseStart(final CharSequence expression, final int index){
-		int openParentheses = 0;
-		for(int i = index; i >= 0; i --){
-			final char chr = expression.charAt(i);
-			if(chr == ')')
-				openParentheses ++;
-			else if(openParentheses > 0 && chr == '(')
-				openParentheses --;
-			else if(openParentheses == 0 && BASE_START_DELIMITERS.indexOf(chr) >= 0)
-				return i + 1;
-		}
-		return 0;
-	}
-
-	private static int findExponentEnd(final CharSequence expression, final int index){
-		int openParentheses = 0;
-		for(int i = index; i < expression.length(); i ++){
-			final char chr = expression.charAt(i);
-			if(chr == '(')
-				openParentheses ++;
-			else if(openParentheses > 0 && chr == ')')
-				openParentheses --;
-			else if(openParentheses == 0 && BASE_END_DELIMITERS.indexOf(chr) >= 0)
-				return i;
-		}
-		return expression.length();
-	}
-
-	private static String convertPowerToMathPow(String expression){
+	static String convertPowerToMathPow(String expression){
 		int powerIndex = -1;
 		while((powerIndex = expression.indexOf(POWER, powerIndex + 1)) >= 0){
 //			//leave the powers of powers for last
@@ -366,12 +290,16 @@ public final class ExpressionExtractor{
 			}
 			else{
 				boolean found = false;
-				for(int i = powerIndex; !found && i < length; i ++)
-					if(expression.charAt(i) == '^'){
+				for(int i = powerIndex; !found && i < length; i ++){
+					final char chr = expression.charAt(i);
+					if(chr == '^'){
 						multipliers.add(expression.substring(powerIndex, i));
 						blockEndIndex = i - 1;
 						found = true;
 					}
+					else if(BASE_DELIMITERS.indexOf(chr) >= 0)
+						break;
+				}
 				if(!found){
 					multipliers.add(expression.substring(powerIndex));
 					break;
@@ -415,49 +343,6 @@ public final class ExpressionExtractor{
 			}
 		}
 		return -1;
-	}
-
-	public static void main(String[] args) {
-		String equation = "x^y";
-		String result = convertPowerToMathPow(equation);
-		System.out.println("pow(x, y) -> " + result + " : " + result.equals("pow(x,y)"));
-
-		equation = "(x + 1)^2";
-		result = convertPowerToMathPow(equation);
-		System.out.println("pow(x + 1, 2) -> " + result + " : " + result.equals("pow(x + 1,2)"));
-
-		equation = "(a + b^2)^(c + d)";
-		result = convertPowerToMathPow(equation);
-		System.out.println("pow(a + pow(b,2), c + d) -> " + result + " : " + result.equals("pow(a + pow(b,2),c + d)"));
-
-		equation = "(a^2 + b)^(c + d)";
-		result = convertPowerToMathPow(equation);
-		System.out.println("pow(pow(a,2) + b, c + d) -> " + result + " : " + result.equals("pow(pow(a,2) + b,c + d)"));
-
-		equation = "(x + y)^(a + b^2)^3";
-		result = convertPowerToMathPow(equation);
-		System.out.println("pow(x + y, (a + b^2) * 3) -> " + result + " : " + result.equals("pow(x + y,(a + pow(b,2))*3)"));
-
-		equation = "x^(2+1)^3";
-		result = convertPowerToMathPow(equation);
-		System.out.println("pow(x, (2+1) * 3) -> " + result + " : " + result.equals("pow(x,(2+1)*3)"));
-
-		equation = "x^2^3";
-		result = convertPowerToMathPow(equation);
-		System.out.println("pow(x, 2 * 3) -> " + result + " : " + result.equals("pow(x,2*3)"));
-
-		equation = "x + 1^(2 + x)";
-		result = convertPowerToMathPow(equation);
-		System.out.println("x + pow(1, (2 + x)) -> " + result + " : " + result.equals("x + pow(1,2 + x)"));
-
-		//FIXME here
-		equation = "x^(2 + x^2)";
-		result = convertPowerToMathPow(equation);
-		System.out.println("pow(x, 2 + pow(x, 2)) -> " + result + " : " + result.equals("pow(x,2 + pow(x,2))"));
-
-		equation = "x1^(2+(x+1)^2)";
-		result = convertPowerToMathPow(equation);
-		System.out.println("pow(x1, 2 + pow(x+1, 2)) -> " + result + " : " + result.equals("pow(x1,2+pow(x+1,2))"));
 	}
 
 	private static JexlContext createJexlContext(){
