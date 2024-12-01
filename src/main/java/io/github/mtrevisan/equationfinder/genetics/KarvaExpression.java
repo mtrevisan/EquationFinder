@@ -22,40 +22,55 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  */
-package io.github.mtrevisan.equationfinder.objectives;
-
-import io.github.mtrevisan.equationfinder.ModelFunction;
-import org.apache.commons.math3.analysis.MultivariateFunction;
+package io.github.mtrevisan.equationfinder.genetics;
 
 
-/** Maximum error */
-public class ObjectiveMax implements MultivariateFunction{
-
-	public static final String OBJECTIVE_MAXIMUM_ERROR = "Max";
+import java.util.Arrays;
 
 
-	private final ModelFunction function;
-	protected final double[][] dataTable;
+//https://en.wikipedia.org/wiki/Gene_expression_programming
+//https://www.gene-expression-programming.com/GepBook/Chapter3/Introduction.htm
+//https://worldcomp-proceedings.com/proc/p2013/GEM2456.pdf
+public class KarvaExpression{
+
+	//list of functions, variables, and constants
+	String[] head;
+	//list of variables and constants
+	//size is: `t = h · (MaxArg - 1) + 1`, where `t` is the number of symbols in the tail, `h` is the number of symbols in the head, and
+	//`MaxArg` is the maximum number of arguments required by any function that is allowed to be used in the expression
+	String[] tail;
 
 
-	public ObjectiveMax(final ModelFunction function, final double[][] dataTable){
-		this.function = function;
-		this.dataTable = dataTable;
+	public KarvaExpression(final String[] head, final String[] tail){
+		this.head = head;
+		this.tail = tail;
+	}
+
+
+	public String headAt(final int index){
+		return head[index];
+	}
+
+	public String tailAt(final int index){
+		return tail[index];
+	}
+
+	public int headLength(){
+		return head.length;
+	}
+
+	public int tailLength(){
+		return tail.length;
+	}
+
+	public int length(){
+		return headLength() + tailLength();
 	}
 
 
 	@Override
-	public double value(final double[] params){
-		double error = 0.;
-		final int length = dataTable.length;
-		for(int i = 0; i < length; i ++){
-			final double[] row = dataTable[i];
-
-			final double expected = row[row.length - 1];
-			final double predicted = function.evaluate(params, row);
-			error = Math.max(error, Math.abs(expected - predicted));
-		}
-		return error;
+	public String toString(){
+		return Arrays.toString(head) + ',' + Arrays.toString(tail);
 	}
 
 }

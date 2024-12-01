@@ -24,21 +24,80 @@
  */
 package io.github.mtrevisan.equationfinder;
 
+import io.github.mtrevisan.equationfinder.genetics.KarvaExpression;
+import io.github.mtrevisan.equationfinder.genetics.KarvaToInfixConverter;
+
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 
 //https://www.dtreg.com/methodology/view/gene-expression-programming
 //	https://www.dtreg.com/uploaded/downloadfile/DownloadFile_5.pdf
 //https://github.com/ShuhuaGao/geppy
+//gene manipulation: selection, replication,recombination,mutation,inversion,IS/RIS transposition
 public class GeneticAlgorithm{
 
-//	private static final int POPULATION_SIZE = 100;
+	private static final String[] OPERATORS;
+	static{
+		final List<String> ops = new ArrayList<>();
+		//basic operators
+		ops.add("+");
+		ops.add("-");
+		ops.add("*");
+		ops.add("/");
+
+		//trigonometric functions
+		ops.add("sin");
+		ops.add("cos");
+		ops.add("tan");
+		ops.add("asin");
+		ops.add("acos");
+		ops.add("atan");
+		ops.add("atan2");
+
+		//hyperbolic functions
+		ops.add("sinh");
+		ops.add("cosh");
+		ops.add("tanh");
+
+		//exponential and logarithmic functions
+		ops.add("exp");
+		ops.add("log");
+		ops.add("sqrt");
+		ops.add("cbrt");
+		ops.add("pow");
+		ops.add("hypot");
+
+		//other mathematical functions
+		ops.add("ceil");
+		ops.add("floor");
+		ops.add("round");
+		ops.add("floorDiv");
+		ops.add("floorMod");
+		ops.add("ceilDiv");
+		ops.add("ceilMod");
+		ops.add("abs");
+		ops.add("clamp");
+		ops.add("signum");
+
+		//logical functions
+		ops.add("max");
+		ops.add("min");
+
+		OPERATORS = ops.toArray(new String[ops.size()]);
+	}
+
+
 	private static final int MAX_GENERATIONS = 200;
-	private static final double MUTATION_RATE = 0.2;
-	private static final double CROSSOVER_RATE = 0.7;
+	private static final int POPULATION_SIZE = 100;
+	private static final double CROSSOVER_PROBABILITY = 0.7;
+	private static final double MUTATION_PROBABILITY = 0.2;
+
+	private static final Random RANDOM = new Random(System.currentTimeMillis());
 
 
 	static abstract class Function{
@@ -303,22 +362,48 @@ public class GeneticAlgorithm{
 	public static void main(final String[] args){
 		final Random random = new Random();
 
-		// Dati di input e output
-		final double[][] inputs = {
-			{1, 2},
-			{2, 3},
-			{3, 4}
+		final String[] dataInput = new String[]{"yeast", "temperature"};
+		final double[][] dataTable = {
+			{1., 2., 3.},
+			{2., 3., 5.},
+			{3., 4., 7.}
 		};
-		// Ad esempio, una funzione lineare f(x) = x0 + x1
-		final double[] outputs = {3, 5, 7};
 
 		//initialize population:
-		final List<Function> population = new ArrayList<>();
-		population.add(new Parameter(random.nextInt(2)));
-		population.add(new Variable(random.nextInt(2)));
-		population.add(new Constant(random.nextInt(2)));
-		//generate a random operation
-		population.add(new Operation("+", new Parameter(random.nextInt(2)), new Parameter(random.nextInt(2))));
+		final int populationSize = 10;
+		final int maxDepth = 5;
+		final List<KarvaExpression> population = generateInitialPopulation(populationSize, maxDepth, dataInput);
+
+		//evaluate population:
+		for(int i = 0; i < population.size(); i ++){
+			final KarvaExpression expression = population.get(i);
+
+			System.out.println("Karva expression " + (i + 1) + ": " + KarvaToInfixConverter.convertKarvaToInfix(expression));
+		}
+
+		//S_best = getBestSolution(population)
+		//while(!stopCondition()){
+		//	parents = selectParents(population, POPULATION_SIZE)
+		//	children = empty_set
+		//	for(parent1, parent2 in parents){
+		//		child1, child2 = crossover(parent1, parent2, CROSSOVER_PROBABILITY)
+		//		children = mutate(child1, MUTATION_PROBABILITY)
+		//		children = mutate(child2, MUTATION_PROBABILITY)
+		//	}
+		//	evaluatePopulation(children)
+		//	S_best = getBestSolution(children)
+		//	population = replace(population, children)
+		//}
+		//return S_best
+
+		//initialize population:
+//		final List<Function> population = new ArrayList<>();
+//		population.add(new Parameter(random.nextInt(2)));
+//		population.add(new Variable(random.nextInt(2)));
+//		population.add(new Constant(random.nextInt(2)));
+//		//generate a random operation
+//		population.add(new Operation("+", new Parameter(random.nextInt(2)), new Parameter(random.nextInt(2))));
+
 //		final List<Function> population = new ArrayList<>();
 //		for(int i = 0; i < POPULATION_SIZE; i ++){
 //			if(random.nextDouble() < 0.5){
@@ -344,75 +429,129 @@ public class GeneticAlgorithm{
 //					population.add(new Operation(operator, left, right));
 //			}
 //		}
+//
+//		//genetic algorithm
+//		for(int generation = 0; generation < MAX_GENERATIONS; generation ++){
+//			//evaluation
+//			population.sort(Comparator.comparingDouble(f -> fitness(f, inputs, outputs)));
+//
+//			//selection
+//			final List<KarvaExpression> newPopulation = new ArrayList<>();
+//			for(int i = 0; i < Math.max(population.size() >> 1, 1); i ++)
+//				newPopulation.add(tournamentSelection(population, inputs, outputs));
+//
+//			//crossover and mutation
+//			for(int i = 0; i < Math.max(population.size() >> 1, 1); i ++){
+//				if(population.size() > 1 && Math.random() < CROSSOVER_PROBABILITY){
+//					final KarvaExpression parent1 = newPopulation.get(random.nextInt(newPopulation.size()));
+//					final KarvaExpression parent2 = newPopulation.get(random.nextInt(newPopulation.size()));
+//					newPopulation.add(parent1.crossover(parent2));
+//				}
+//				if(population.size() == 1 || Math.random() < MUTATION_PROBABILITY){
+//					final KarvaExpression mutant = newPopulation.get(random.nextInt(newPopulation.size()))
+//						.mutate();
+//					newPopulation.add(mutant);
+//				}
+//			}
+//
+//			//update population
+//			population.clear();
+//			population.addAll(newPopulation);
+//
+//			//best solution
+//			final KarvaExpression best = population.getFirst();
+//			final double error = fitness(best, inputs, outputs);
+//			System.out.println("Generation " + generation + ": " + best + " with error " + error);
+//
+//			if(error < 1.e-6)
+//				//stopping criterion
+//				break;
+//		}
+	}
 
-		//genetic algorithm
-		for(int generation = 0; generation < MAX_GENERATIONS; generation ++){
-			//evaluation
-			population.sort(Comparator.comparingDouble(f -> fitness(f, inputs, outputs)));
+	/**
+	 * Generates an initial population of Karva expressions.
+	 *
+	 * @param populationSize	The size of the population.
+	 * @param maxDepth	The maximum depth of the expressions.
+	 * @param inputs	The inputs.
+	 * @return	A list of Karva expressions.
+	 */
+	private static List<KarvaExpression> generateInitialPopulation(final int populationSize, final int maxDepth, final String[] inputs){
+		final List<KarvaExpression> population = new ArrayList<>();
+		for(int i = 0; i < populationSize; i ++)
+			population.add(generateKarvaExpression(maxDepth, inputs));
+		return population;
+	}
 
-			//selection
-			final List<Function> newPopulation = new ArrayList<>();
-			for(int i = 0; i < Math.max(population.size() >> 1, 1); i ++)
-				newPopulation.add(tournamentSelection(population, inputs, outputs));
+	/**
+	 * Generates a random Karva expression.
+	 *
+	 * @param maxNumberOfOperators	The maximum number of operators.
+	 * @return	A Karva expression.
+	 */
+	private static KarvaExpression generateKarvaExpression(final int maxNumberOfOperators, final String[] inputs){
+		//ensure at least 2 nodes
+		final int h = RANDOM.nextInt(maxNumberOfOperators - 1) + 2;
+		final int maxArgs = 3;
+		final int t = h * (maxArgs - 1) + 1;
 
-			//crossover and mutation
-			for(int i = 0; i < Math.max(population.size() >> 1, 1); i ++){
-				if(population.size() > 1 && Math.random() < CROSSOVER_RATE){
-					final Function parent1 = newPopulation.get(random.nextInt(newPopulation.size()));
-					final Function parent2 = newPopulation.get(random.nextInt(newPopulation.size()));
-					newPopulation.add(parent1.crossover(parent2));
-				}
-				if(population.size() == 1 || Math.random() < MUTATION_RATE){
-					final Function mutant = newPopulation.get(random.nextInt(newPopulation.size()))
-						.mutate();
-					newPopulation.add(mutant);
-				}
+		final List<String> head = new ArrayList<>(h);
+		final List<String> tail = new ArrayList<>(t);
+
+		//generate head (operators and functions)
+		final int inputCount = inputs.length;
+		for(int i = 0; i < h; i ++){
+			final int type = RANDOM.nextInt(3);
+			//add function
+			if(type == 0){
+				final int operatorIndex = RANDOM.nextInt(OPERATORS.length);
+				head.add(OPERATORS[operatorIndex]);
 			}
-
-			//update population
-			population.clear();
-			population.addAll(newPopulation);
-
-			//best solution
-			final Function best = population.getFirst();
-			final double error = fitness(best, inputs, outputs);
-			System.out.println("Generation " + generation + ": " + best + " with error " + error);
-
-			if(error < 1.e-6)
-				//stopping criterion
-				break;
+			//add variable
+			else if(type == 1)
+				head.add(inputs[RANDOM.nextInt(inputCount)]);
+			//add constant
+			else if(type == 2)
+				head.add("p" + RANDOM.nextInt(t));
 		}
+
+		//generate tail (variables and constants)
+		for(int i = 0; i < t; i ++)
+			tail.add(inputs[RANDOM.nextInt(inputCount)]);
+
+		return new KarvaExpression(head.toArray(new String[0]), tail.toArray(new String[0]));
 	}
 
 	// Calcola l'errore (fitness)
-	private static double fitness(final Function f, final double[][] inputs, final double[] outputs){
-		try{
-			double error = 0.;
-			// Inizializzazione dei parametri
-			final double[] p = {1, 1};
-			for(int i = 0; i < inputs.length; i ++)
-				error += Math.pow(f.evaluate(p, inputs[i]) - outputs[i], 2);
-			return error;
-		}
-		catch(final Exception e){
-//			System.err.println("Error while evaluating function: " + f);
-//			e.printStackTrace();
-
-			//heavily penalizes invalid functions
-			return Double.MAX_VALUE;
-		}
-	}
-
-	private static Function tournamentSelection(final List<Function> population, double[][] inputs, double[] outputs){
-		final Random random = new Random();
-		Function best = null;
-		//randomly select a subset of the population for the tournament
-		for(int i = 0; i < 5; i ++){
-			final Function contender = population.get(random.nextInt(population.size()));
-			if(best == null || fitness(contender, inputs, outputs) < fitness(best, inputs, outputs))
-				best = contender;
-		}
-		return best;
-	}
+//	private static double fitness(final KarvaExpression f, final double[][] inputs, final double[] outputs){
+//		try{
+//			double error = 0.;
+//			// Inizializzazione dei parametri
+//			final double[] p = {1, 1};
+//			for(int i = 0; i < inputs.length; i ++)
+//				error += Math.pow(f.evaluate(p, inputs[i]) - outputs[i], 2);
+//			return error;
+//		}
+//		catch(final Exception e){
+////			System.err.println("Error while evaluating function: " + f);
+////			e.printStackTrace();
+//
+//			//heavily penalizes invalid functions
+//			return Double.MAX_VALUE;
+//		}
+//	}
+//
+//	private static KarvaExpression tournamentSelection(final List<KarvaExpression> population, double[][] inputs, double[] outputs){
+//		final Random random = new Random();
+//		KarvaExpression best = null;
+//		//randomly select a subset of the population for the tournament
+//		for(int i = 0; i < 5; i ++){
+//			final KarvaExpression contender = population.get(random.nextInt(population.size()));
+//			if(best == null || fitness(contender, inputs, outputs) < fitness(best, inputs, outputs))
+//				best = contender;
+//		}
+//		return best;
+//	}
 
 }
