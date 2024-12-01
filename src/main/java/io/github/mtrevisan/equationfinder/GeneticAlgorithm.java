@@ -30,6 +30,9 @@ import java.util.List;
 import java.util.Random;
 
 
+//https://www.dtreg.com/methodology/view/gene-expression-programming
+//	https://www.dtreg.com/uploaded/downloadfile/DownloadFile_5.pdf
+//https://github.com/ShuhuaGao/geppy
 public class GeneticAlgorithm{
 
 //	private static final int POPULATION_SIZE = 100;
