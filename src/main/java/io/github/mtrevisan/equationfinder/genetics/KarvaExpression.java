@@ -31,46 +31,34 @@ import java.util.Arrays;
 //https://en.wikipedia.org/wiki/Gene_expression_programming
 //https://www.gene-expression-programming.com/GepBook/Chapter3/Introduction.htm
 //https://worldcomp-proceedings.com/proc/p2013/GEM2456.pdf
+//https://www.cs.uic.edu/~xli1/papers/PGEP_GECCOLateBreaking05_XLi.pdf
 public class KarvaExpression{
 
 	//list of functions, variables, and constants, in level-order
-	String[] head;
-	//list of variables and constants
-	//size is: `t = h · (MaxArg - 1) + 1`, where `t` is the number of symbols in the tail, `h` is the number of symbols in the head, and
-	//`MaxArg` is the maximum number of arguments required by any function that is allowed to be used in the expression
-	String[] tail;
+	private String[] gene;
 
 
-	public KarvaExpression(final String[] head, final String[] tail){
-		this.head = head;
-		this.tail = tail;
+	public KarvaExpression(final String[] gene){
+		this.gene = gene;
 	}
 
 
-	public String headAt(final int index){
-		return head[index];
+	public String geneAt(final int index){
+		return gene[index];
 	}
 
-	public String tailAt(final int index){
-		return tail[index];
-	}
-
-	public int headLength(){
-		return head.length;
-	}
-
-	public int tailLength(){
-		return tail.length;
+	public boolean isEmpty(){
+		return (gene == null || gene.length == 0);
 	}
 
 	public int length(){
-		return headLength() + tailLength();
+		return (gene != null? gene.length: 0);
 	}
 
 
 	@Override
 	public String toString(){
-		return Arrays.toString(head) + ',' + Arrays.toString(tail);
+		return Arrays.toString(gene);
 	}
 
 }

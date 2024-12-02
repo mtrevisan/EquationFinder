@@ -24,21 +24,26 @@
  */
 package io.github.mtrevisan.equationfinder.genetics;
 
-import java.util.Arrays;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
-import java.util.Queue;
+import java.util.Set;
+import java.util.StringJoiner;
 
 
-public class KarvaToInfixConverter{
+public final class KarvaToInfixConverter{
 
 	private static final String PARENTHESIS_OPEN = "(";
 	private static final String PARENTHESIS_CLOSE = ")";
 	private static final String COMMA = ",";
-	private static final String SIMPLE_BINARY_FUNCTIONS = "+-*/";
+	private static final String EMPTY = "";
 
 	private static final Map<String, Integer> OPERATOR_ARITY = new HashMap<>();
+	private static final Set<String> SIMPLE_BINARY_FUNCTIONS = new HashSet<>(4);
 	static{
 		//basic operators
 		OPERATOR_ARITY.put("+", 2);
@@ -83,76 +88,129 @@ public class KarvaToInfixConverter{
 		//logical functions
 		OPERATOR_ARITY.put("max", 2);
 		OPERATOR_ARITY.put("min", 2);
+
+
+		SIMPLE_BINARY_FUNCTIONS.add("+");
+		SIMPLE_BINARY_FUNCTIONS.add("-");
+		SIMPLE_BINARY_FUNCTIONS.add("*");
+		SIMPLE_BINARY_FUNCTIONS.add("/");
 	}
 
+
+	private KarvaToInfixConverter(){}
+
+
+	//TODO remove this class, to the conversion level-order to post-order directly
+	static class Node{
+		String value;
+		LinkedList<Node> children;
+
+		// Constructor for the Node class
+		Node(final String value){
+			this.value = value;
+			children = new LinkedList<>();
+		}
+	}
 
 	/**
 	 * Converts a Karva (prefix) expression into an infix expression.
 	 *
-	 * @param expr	The Karva expression in prefix notation (e.g., "+xy").
-	 * @return	The equivalent infix expression (e.g., "(x + y)").
-	 * @throws IllegalArgumentException	If the Karva expression is invalid.
+	 * @param karva The Karva expression in prefix notation (e.g., "+xy").
+	 * @throws IllegalArgumentException If the Karva expression is invalid.
+	 * @return The equivalent infix expression (e.g., "(x + y)").
 	 */
-	public static String convertKarvaToInfix(final KarvaExpression expr){
-		final Queue<String> queue = new LinkedList<>(Arrays.asList(expr.head));
-		final Queue<String> argsQueue = new LinkedList<>(Arrays.asList(expr.tail));
-		return buildExpressionRecursive(queue, argsQueue);
+	public static String convertToEquation(final KarvaExpression karva){
+		if(karva.isEmpty())
+			return EMPTY;
+
+		final Node root = buildTree(karva);
+
+		final List<String> result = postOrderTraversal(root);
+
+		return toExpression(result);
 	}
 
-	private static String buildExpressionRecursive(final Queue<String> queue, final Queue<String> argsQueue){
-		final String current;
-		if(!queue.isEmpty())
-			//current node from queue
-			current = queue.poll();
-		else if(!argsQueue.isEmpty())
-			//current node from arguments
-			current = argsQueue.poll();
-		else
-			throw new IllegalStateException("Malformed input: no more tokens to process.");
+	private static Node buildTree(final KarvaExpression karva){
+		//construct the tree using level-order and arity information
+		final LinkedList<Node> queue = new LinkedList<>();
+		int index = 0;
+		final Node root = new Node(karva.geneAt(index ++));
+		queue.add(root);
 
-		final Integer arity = OPERATOR_ARITY.get(current);
+		//build the N-ary tree
+		for(int i = 0, length = karva.length(); i < length; i ++){
+			final Node parent = queue.poll();
 
-		if(arity == null)
-			//variable or constant: returns directly
-			return current;
-
-		//builds children based on arity
-		final StringBuilder expression = new StringBuilder();
-		if(SIMPLE_BINARY_FUNCTIONS.contains(current)){
-			final String left = buildExpressionRecursive(queue, argsQueue);
-			final String right = buildExpressionRecursive(queue, argsQueue);
-
-			expression.append(PARENTHESIS_OPEN)
-				.append(left)
-				.append(current)
-				.append(right);
+			final int childrenCount = OPERATOR_ARITY.getOrDefault(karva.geneAt(i), 0);
+			for(int j = 0; j < childrenCount; j ++)
+				if(index < length){
+					final Node child = new Node(karva.geneAt(index ++));
+					parent.children
+						.add(child);
+					queue.add(child);
+				}
 		}
-		else{
-			expression.append(current)
-				.append(PARENTHESIS_OPEN);
-			for(int i = 0; i < arity; i ++){
-				final String argument = buildExpressionRecursive(queue, argsQueue);
+		return root;
+	}
 
-				if(i > 0)
-					expression.append(COMMA);
-				expression.append(argument);
+	//Extract Reverse Polish Notation
+	private static List<String> postOrderTraversal(final Node root){
+		final List<String> result = new LinkedList<>();
+		if(root != null){
+			final Deque<Node> stack = new ArrayDeque<>(1);
+			stack.push(root);
+			while(!stack.isEmpty()){
+				final Node current = stack.pop();
+
+				result.addFirst(current.value);
+
+				final LinkedList<Node> children = current.children;
+				for(int i = 0, length = children.size(); i < length; i ++)
+					stack.push(children.get(i));
 			}
 		}
-		expression.append(PARENTHESIS_CLOSE);
-		return expression.toString();
+		return result;
 	}
 
+	private static String toExpression(final List<String> result){
+		final Deque<String> tokenStack = new ArrayDeque<>(1);
+		final StringBuilder expression = new StringBuilder();
+		for(int i = 0; i < result.size(); i ++){
+			final String token = result.get(i);
+			final Integer arity = OPERATOR_ARITY.get(token);
+			if(arity == null){
+				tokenStack.push(token);
+				continue;
+			}
 
-	public static void main(final String[] args){
-		final KarvaExpression karvaExpression = new KarvaExpression(new String[]{"sin", "*", "-", "+"}, new String[]{"a", "b", "c", "d"});
-		try{
-			final String infixExpression = convertKarvaToInfix(karvaExpression);
-			//sin((a - b) * (c + d))
-			System.out.println("Infix expression: " + infixExpression);
+			//otherwise, it's an operator or function, so we need to handle it accordingly
+			expression.setLength(0);
+
+			//builds children based on arity
+			if(SIMPLE_BINARY_FUNCTIONS.contains(token)){
+				final String rightOperand = tokenStack.pop();
+				final String leftOperand = tokenStack.pop();
+				expression.append(PARENTHESIS_OPEN)
+					.append(leftOperand)
+					.append(token)
+					.append(rightOperand)
+					.append(PARENTHESIS_CLOSE);
+			}
+			else{
+				final String[] operands = new String[arity];
+				for(int j = 0; j < arity; j ++)
+					operands[arity - j - 1] = tokenStack.pop();
+				final StringJoiner sj = new StringJoiner(COMMA, PARENTHESIS_OPEN, PARENTHESIS_CLOSE);
+				for(int j = 0; j < arity; j ++)
+					sj.add(operands[j]);
+				expression.append(token)
+					.append(sj);
+			}
+
+			tokenStack.push(expression.toString());
 		}
-		catch(final IllegalArgumentException iae){
-			System.err.println("Error: " + iae.getMessage());
-		}
+
+		return (tokenStack.size() == 1? tokenStack.pop(): EMPTY);
 	}
 
 }
