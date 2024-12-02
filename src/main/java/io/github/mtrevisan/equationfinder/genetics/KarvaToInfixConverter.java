@@ -138,10 +138,11 @@ public final class KarvaToInfixConverter{
 		queue.add(root);
 
 		//build the N-ary tree
-		for(int i = 0, length = karva.length(); i < length; i ++){
+		for(int i = 0, length = karva.length(); !queue.isEmpty() && i < length; i ++){
 			final Node parent = queue.poll();
 
-			final int childrenCount = OPERATOR_ARITY.getOrDefault(karva.geneAt(i), 0);
+			final String token = karva.geneAt(i);
+			final int childrenCount = OPERATOR_ARITY.getOrDefault(token, 0);
 			for(int j = 0; j < childrenCount; j ++)
 				if(index < length){
 					final Node child = new Node(karva.geneAt(index ++));

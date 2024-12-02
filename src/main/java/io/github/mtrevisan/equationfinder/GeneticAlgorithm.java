@@ -26,13 +26,35 @@ package io.github.mtrevisan.equationfinder;
 
 import io.github.mtrevisan.equationfinder.genetics.KarvaExpression;
 import io.github.mtrevisan.equationfinder.genetics.KarvaToInfixConverter;
+import io.github.mtrevisan.equationfinder.objectives.ObjectiveMA;
+import io.github.mtrevisan.equationfinder.objectives.ObjectiveMAR;
+import io.github.mtrevisan.equationfinder.objectives.ObjectiveMax;
+import io.github.mtrevisan.equationfinder.objectives.ObjectiveMaxR;
+import io.github.mtrevisan.equationfinder.objectives.ObjectiveMedA;
+import io.github.mtrevisan.equationfinder.objectives.ObjectiveNSE;
+import io.github.mtrevisan.equationfinder.objectives.ObjectivePenalty;
+import io.github.mtrevisan.equationfinder.objectives.ObjectiveRMSL;
+import io.github.mtrevisan.equationfinder.objectives.ObjectiveRSS;
+import org.apache.commons.math3.analysis.MultivariateFunction;
+import org.apache.commons.math3.optim.InitialGuess;
+import org.apache.commons.math3.optim.MaxEval;
+import org.apache.commons.math3.optim.PointValuePair;
+import org.apache.commons.math3.optim.SimpleBounds;
+import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
+import org.apache.commons.math3.optim.nonlinear.scalar.ObjectiveFunction;
+import org.apache.commons.math3.optim.nonlinear.scalar.noderiv.BOBYQAOptimizer;
 
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.BiFunction;
 
 
 //https://www.dtreg.com/methodology/view/gene-expression-programming
@@ -89,6 +111,18 @@ public class GeneticAlgorithm{
 		ops.add("min");
 
 		OPERATORS = ops.toArray(new String[ops.size()]);
+	}
+
+	private static final Map<String, BiFunction<ModelFunction, double[][], MultivariateFunction>> OBJECTIVE_FUNCTIONS = new HashMap<>(8);
+	static{
+		OBJECTIVE_FUNCTIONS.put(ObjectiveMA.OBJECTIVE_MEAN_ABSOLUTE_ERROR, (function, dataTable) -> new ObjectiveMA(function, dataTable));
+		OBJECTIVE_FUNCTIONS.put(ObjectiveMAR.OBJECTIVE_MEAN_ABSOLUTE_RELATIVE_ERROR, (function, dataTable) -> new ObjectiveMAR(function, dataTable));
+		OBJECTIVE_FUNCTIONS.put(ObjectiveMax.OBJECTIVE_MAXIMUM_ERROR, (function, dataTable) -> new ObjectiveMax(function, dataTable));
+		OBJECTIVE_FUNCTIONS.put(ObjectiveMaxR.OBJECTIVE_MAXIMUM_RELATIVE_ERROR, (function, dataTable) -> new ObjectiveMaxR(function, dataTable));
+		OBJECTIVE_FUNCTIONS.put(ObjectiveMedA.OBJECTIVE_MEDIANT_ABSOLUTE_ERROR, (function, dataTable) -> new ObjectiveMedA(function, dataTable));
+		OBJECTIVE_FUNCTIONS.put(ObjectiveNSE.OBJECTIVE_NASH_SUTCLIFFE_EFFICIENCY, (function, dataTable) -> new ObjectiveNSE(function, dataTable));
+		OBJECTIVE_FUNCTIONS.put(ObjectiveRMSL.OBJECTIVE_ROOT_MEAN_SQUARED_LOG_ERROR, (function, dataTable) -> new ObjectiveRMSL(function, dataTable));
+		OBJECTIVE_FUNCTIONS.put(ObjectiveRSS.OBJECTIVE_RESIDUAL_SUM_OF_SQUARES_ERROR, (function, dataTable) -> new ObjectiveRSS(function, dataTable));
 	}
 
 
@@ -359,15 +393,18 @@ public class GeneticAlgorithm{
 	}
 
 
-	public static void main(final String[] args){
-		final Random random = new Random();
+	public static void main(final String[] args) throws IOException{
+		final String problemDataURI = "C:\\mauro\\mine\\projects\\EquationFinder\\src\\main\\resources\\test.txt";
+//		final String problemDataURI = "C:\\Users\\mauro\\Projects\\EquationFinder\\src\\main\\resources\\\\test.txt";
+		final ProblemData problemData = ProblemExtractor.readProblemData(Paths.get(problemDataURI));
 
-		final String[] dataInput = new String[]{"yeast", "temperature"};
-		final double[][] dataTable = {
-			{1., 2., 3.},
-			{2., 3., 5.},
-			{3., 4., 7.}
-		};
+		final SearchMode searchMode = problemData.searchMode();
+//		final String expression = problemData.expression();
+		final String[] constraints = problemData.constraints();
+		final String[] dataInput = problemData.dataInput();
+		final double[][] dataTable = problemData.dataTable();
+		final String searchMetric = problemData.searchMetric();
+
 
 		//initialize population:
 		final int populationSize = 10;
@@ -376,9 +413,37 @@ public class GeneticAlgorithm{
 
 		//evaluate population:
 		for(int i = 0; i < population.size(); i ++){
-			final KarvaExpression expression = population.get(i);
+			final KarvaExpression karvaExpression = population.get(i);
 
-//			System.out.println("Karva expression " + expression + ": " + KarvaToInfixConverter.convertKarvaToInfix(expression));
+			final String expression = KarvaToInfixConverter.convertToEquation(karvaExpression);
+			System.out.println("Karva expression " + karvaExpression + ": " + expression);
+
+
+			final ModelFunction function = ExpressionExtractor.parseExpression(expression, dataInput);
+			final MultivariateFunction objective = OBJECTIVE_FUNCTIONS.get(searchMetric)
+				.apply(function, dataTable);
+
+			final List<String> parameters = ExpressionExtractor.extractVariables(expression);
+			final int parameterCount = getParameterCount(parameters, dataInput);
+			if(parameterCount < 2)
+				//TODO manage
+				continue;
+
+			final double[] lowerBounds = createInitialLowerBounds(parameterCount);
+			final double[] upperBounds = createInitialUpperBounds(parameterCount);
+			final Constraint[] complexConstraints = createComplexConstraints(constraints, lowerBounds, upperBounds);
+			final MultivariateFunction objectiveFunction = new ObjectivePenalty(objective, complexConstraints, searchMode,
+				function, dataTable);
+
+			final double[] initialGuess = new double[parameterCount];
+			Arrays.fill(initialGuess, 1.);
+
+			final SimpleBounds bounds = new SimpleBounds(lowerBounds, upperBounds);
+			final double[] bestParameters = optimize(objectiveFunction, bounds, initialGuess, 1_000);
+
+			//TODO evaluate fit
+			final double fitness = objectiveFunction.value(bestParameters);
+			System.out.println(fitness);
 		}
 
 		//S_best = getBestSolution(population)
@@ -469,6 +534,34 @@ public class GeneticAlgorithm{
 //		}
 	}
 
+	private static double[] createInitialLowerBounds(final int parameterCount){
+		return createBounds(parameterCount, Double.NEGATIVE_INFINITY);
+	}
+
+	private static double[] createInitialUpperBounds(final int parameterCount){
+		return createBounds(parameterCount, Double.POSITIVE_INFINITY);
+	}
+
+	private static double[] createBounds(final int parameterCount, final double initialValue){
+		final double[] bounds = new double[parameterCount];
+		Arrays.fill(bounds, initialValue);
+		return bounds;
+	}
+
+	private static Constraint[] createComplexConstraints(final String[] constraints, final double[] lowerBounds,
+			final double[] upperBounds){
+		final List<Constraint> complexConstraints = new ArrayList<>(0);
+		for(int k = 0, constraintCount = constraints.length; k < constraintCount; k ++){
+			final String constraintExpression = constraints[k];
+
+			if(!ConstraintExtractor.parseBasicConstraint(constraintExpression, lowerBounds, upperBounds)){
+				final Constraint constraint = ConstraintExtractor.parseComplexConstraint(constraintExpression);
+				complexConstraints.add(constraint);
+			}
+		}
+		return complexConstraints.toArray(new Constraint[complexConstraints.size()]);
+	}
+
 	/**
 	 * Generates an initial population of Karva expressions.
 	 *
@@ -496,53 +589,33 @@ public class GeneticAlgorithm{
 		final int maxArgs = 3;
 		final int t = h * (maxArgs - 1) + 1;
 
-		final List<String> head = new ArrayList<>(h);
-		final List<String> tail = new ArrayList<>(t);
+		final String[] gene = new String[h + t];
 
 		//generate head (operators and functions)
+		int index = 0;
 		final int inputCount = inputs.length;
 		for(int i = 0; i < h; i ++){
 			final int type = RANDOM.nextInt(3);
-			//add function
+			//add function to head
 			if(type == 0){
 				final int operatorIndex = RANDOM.nextInt(OPERATORS.length);
-				head.add(OPERATORS[operatorIndex]);
+				gene[index ++] = OPERATORS[operatorIndex];
 			}
-			//add variable
+			//add variable to head
 			else if(type == 1)
-				head.add(inputs[RANDOM.nextInt(inputCount)]);
-			//add constant
+				gene[index ++] = inputs[RANDOM.nextInt(inputCount)];
+			//add constant to head
 			else if(type == 2)
-				head.add("p" + RANDOM.nextInt(t));
+				gene[index ++] = "p" + RANDOM.nextInt(t);
 		}
 
 		//generate tail (variables and constants)
 		for(int i = 0; i < t; i ++)
-			tail.add(inputs[RANDOM.nextInt(inputCount)]);
+			gene[index ++] = inputs[RANDOM.nextInt(inputCount)];
 
-//		return new KarvaExpression(head.toArray(new String[0]), tail.toArray(new String[0]));
-		return null;
+		return new KarvaExpression(gene);
 	}
 
-	// Calcola l'errore (fitness)
-//	private static double fitness(final KarvaExpression f, final double[][] inputs, final double[] outputs){
-//		try{
-//			double error = 0.;
-//			// Inizializzazione dei parametri
-//			final double[] p = {1, 1};
-//			for(int i = 0; i < inputs.length; i ++)
-//				error += Math.pow(f.evaluate(p, inputs[i]) - outputs[i], 2);
-//			return error;
-//		}
-//		catch(final Exception e){
-////			System.err.println("Error while evaluating function: " + f);
-////			e.printStackTrace();
-//
-//			//heavily penalizes invalid functions
-//			return Double.MAX_VALUE;
-//		}
-//	}
-//
 //	private static KarvaExpression tournamentSelection(final List<KarvaExpression> population, double[][] inputs, double[] outputs){
 //		final Random random = new Random();
 //		KarvaExpression best = null;
@@ -554,5 +627,29 @@ public class GeneticAlgorithm{
 //		}
 //		return best;
 //	}
+
+	private static int getParameterCount(final List<String> parameters, final String[] dataInput){
+	final Collection<String> params = new HashSet<>(parameters);
+	for(int i = 0, inputCount = dataInput.length; i < inputCount; i ++)
+		params.remove(dataInput[i]);
+	return params.size();
+}
+
+	//https://stackoverflow.com/questions/16950115/apache-commons-optimization-troubles
+	private static double[] optimize(final MultivariateFunction objectiveFunction, final SimpleBounds bounds, final double[] initialGuess,
+			final int maxIterations){
+		//numberOfInterpolationPoints must be in [n + 2, (n + 1) · (n + 2) / 2]
+		final BOBYQAOptimizer optimizer = new BOBYQAOptimizer(2 * initialGuess.length + 1);
+
+		final PointValuePair result = optimizer.optimize(
+			GoalType.MINIMIZE,
+			new ObjectiveFunction(objectiveFunction),
+			bounds,
+			new InitialGuess(initialGuess),
+			new MaxEval(maxIterations)
+		);
+
+		return result.getPoint();
+	}
 
 }
