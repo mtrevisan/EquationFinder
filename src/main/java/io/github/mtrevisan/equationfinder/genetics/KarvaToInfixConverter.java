@@ -24,17 +24,17 @@
  */
 package io.github.mtrevisan.equationfinder.genetics;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Queue;
 
 
 public class KarvaToInfixConverter{
 
 	private static final String PARENTHESIS_OPEN = "(";
 	private static final String PARENTHESIS_CLOSE = ")";
-	private static final String SPACE = " ";
 	private static final String COMMA = ",";
 	private static final String SIMPLE_BINARY_FUNCTIONS = "+-*/";
 
@@ -89,99 +89,57 @@ public class KarvaToInfixConverter{
 	/**
 	 * Converts a Karva (prefix) expression into an infix expression.
 	 *
-	 * @param karvaExpression	The Karva expression in prefix notation (e.g., "+xy").
+	 * @param expr	The Karva expression in prefix notation (e.g., "+xy").
 	 * @return	The equivalent infix expression (e.g., "(x + y)").
 	 * @throws IllegalArgumentException	If the Karva expression is invalid.
 	 */
-	public static String convertKarvaToInfix(final KarvaExpression karvaExpression){
-		final Deque<String> stack = new ArrayDeque<>();
-		final StringBuilder infix = new StringBuilder();
-
-		//process the Karva expression tail from right to left
-		fillTail(karvaExpression, stack);
-
-		//pointer for tail variables
-		int tailIndex = 0;
-		//TODO cannot proceed last to first, is has to start from the first
-		//process the Karva expression head from right to left
-		for(int i = karvaExpression.headLength() - 1; i >= 0; i --){
-			final String token = karvaExpression.headAt(i);
-
-			if(!OPERATOR_ARITY.containsKey(token)){
-				//if token is not an operator or function, use it as a variable
-				if(tailIndex >= karvaExpression.headLength())
-					throw new IllegalArgumentException("Not enough variables in the tail for the head expression.");
-
-				//if the token is a variable or number, push it to the stack
-//				stack.push(karvaExpression.tailAt(tailIndex ++));
-				stack.addFirst(token);
-			}
-			else{
-				//determine the arity of the operator
-				final int arity = OPERATOR_ARITY.get(token);
-
-				//check if there are enough operands in the stack
-				if(stack.size() < arity)
-					throw new IllegalArgumentException("Invalid Karva expression: insufficient operands for operator '" + token + "'");
-
-				//pop operands based on the operator's arity
-				final String[] operands = new String[arity];
-				for(int j = 0; j < arity; j ++)
-					operands[j] = stack.remove();
-				reverseArray(operands);
-
-				//combine operands into an infix expression
-				combineOperands(arity, token, operands, infix);
-
-				//push the new infix expression back onto the stack
-				stack.addLast(infix.toString());
-			}
-		}
-		return stack.pop();
+	public static String convertKarvaToInfix(final KarvaExpression expr){
+		final Queue<String> queue = new LinkedList<>(Arrays.asList(expr.head));
+		final Queue<String> argsQueue = new LinkedList<>(Arrays.asList(expr.tail));
+		return buildExpressionRecursive(queue, argsQueue);
 	}
 
-	private static void fillTail(final KarvaExpression karvaExpression, final Deque<String> stack){
-		for(int i = 0, length = karvaExpression.tailLength(); i < length; i ++)
-			stack.push(karvaExpression.tailAt(i));
-	}
-
-	/**
-	 * Reverses the order of elements in a String[].
-	 *
-	 * @param array	The input array to reverse.
-	 */
-	public static void reverseArray(final String[] array){
-		int left = 0;
-		int right = array.length - 1;
-		//swap elements from start to end
-		while(left < right){
-			final String temp = array[left];
-			array[left] = array[right];
-			array[right] = temp;
-
-			left ++;
-			right --;
-		}
-	}
-
-	private static void combineOperands(final int arity, final String token, final String[] operands, final StringBuilder infix){
-		infix.setLength(0);
-		if(arity == 1)
-			infix.append(token)
-				.append(PARENTHESIS_OPEN)
-				.append(operands[0]);
-		else if(arity == 2 && SIMPLE_BINARY_FUNCTIONS.contains(token))
-			infix.append(PARENTHESIS_OPEN)
-				.append(operands[0])
-				.append(SPACE)
-				.append(token)
-				.append(SPACE)
-				.append(operands[1]);
+	private static String buildExpressionRecursive(final Queue<String> queue, final Queue<String> argsQueue){
+		final String current;
+		if(!queue.isEmpty())
+			//current node from queue
+			current = queue.poll();
+		else if(!argsQueue.isEmpty())
+			//current node from arguments
+			current = argsQueue.poll();
 		else
-			infix.append(token)
-				.append(PARENTHESIS_OPEN)
-				.append(String.join(COMMA, operands));
-		infix.append(PARENTHESIS_CLOSE);
+			throw new IllegalStateException("Malformed input: no more tokens to process.");
+
+		final Integer arity = OPERATOR_ARITY.get(current);
+
+		if(arity == null)
+			//variable or constant: returns directly
+			return current;
+
+		//builds children based on arity
+		final StringBuilder expression = new StringBuilder();
+		if(SIMPLE_BINARY_FUNCTIONS.contains(current)){
+			final String left = buildExpressionRecursive(queue, argsQueue);
+			final String right = buildExpressionRecursive(queue, argsQueue);
+
+			expression.append(PARENTHESIS_OPEN)
+				.append(left)
+				.append(current)
+				.append(right);
+		}
+		else{
+			expression.append(current)
+				.append(PARENTHESIS_OPEN);
+			for(int i = 0; i < arity; i ++){
+				final String argument = buildExpressionRecursive(queue, argsQueue);
+
+				if(i > 0)
+					expression.append(COMMA);
+				expression.append(argument);
+			}
+		}
+		expression.append(PARENTHESIS_CLOSE);
+		return expression.toString();
 	}
 
 

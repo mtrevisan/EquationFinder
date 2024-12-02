@@ -33,7 +33,7 @@ import java.util.Arrays;
 //https://worldcomp-proceedings.com/proc/p2013/GEM2456.pdf
 public class KarvaExpression{
 
-	//list of functions, variables, and constants
+	//list of functions, variables, and constants, in level-order
 	String[] head;
 	//list of variables and constants
 	//size is: `t = h · (MaxArg - 1) + 1`, where `t` is the number of symbols in the tail, `h` is the number of symbols in the head, and

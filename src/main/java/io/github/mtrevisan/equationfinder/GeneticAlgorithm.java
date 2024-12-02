@@ -378,7 +378,7 @@ public class GeneticAlgorithm{
 		for(int i = 0; i < population.size(); i ++){
 			final KarvaExpression expression = population.get(i);
 
-			System.out.println("Karva expression " + (i + 1) + ": " + KarvaToInfixConverter.convertKarvaToInfix(expression));
+			System.out.println("Karva expression " + expression + ": " + KarvaToInfixConverter.convertKarvaToInfix(expression));
 		}
 
 		//S_best = getBestSolution(population)

@@ -208,15 +208,6 @@ public final class ExpressionExtractor{
 	static String convertPowerToMathPow(String expression){
 		int powerIndex = -1;
 		while((powerIndex = expression.indexOf(POWER, powerIndex + 1)) >= 0){
-//			//leave the powers of powers for last
-//			//FIXME needed?
-//			if(expression.charAt(powerIndex - 1) == ')'){
-//				final int blockStartIndex = parenthesizedBlockStartIndex(expression, powerIndex - 1);
-//				if(blockStartIndex >= 3 && expression.substring(Math.max(blockStartIndex - 4, 0), blockStartIndex + 1).equals(POW_FUNCTION))
-//					continue;
-//			}
-
-
 			//extract base:
 			int blockStartIndex = 0;
 			if(expression.charAt(powerIndex - 1) == ')')
@@ -293,9 +284,6 @@ public final class ExpressionExtractor{
 			sb.replace(blockStartIndex, blockEndIndex, POW_FUNCTION + base.trim() + COMMA + exponent.trim() + PARENTHESIS_CLOSE);
 			expression = sb.toString();
 		}
-
-//		while((powerIndex = expression.indexOf(POWER, powerIndex + 1)) >= 0)
-//			expression = managePowerOfPower(expression);
 
 		return expression;
 	}
