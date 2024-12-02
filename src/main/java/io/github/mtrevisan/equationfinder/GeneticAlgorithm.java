@@ -394,8 +394,8 @@ public class GeneticAlgorithm{
 
 
 	public static void main(final String[] args) throws IOException{
-		final String problemDataURI = "C:\\mauro\\mine\\projects\\EquationFinder\\src\\main\\resources\\test.txt";
-//		final String problemDataURI = "C:\\Users\\mauro\\Projects\\EquationFinder\\src\\main\\resources\\\\test.txt";
+//		final String problemDataURI = "C:\\mauro\\mine\\projects\\EquationFinder\\src\\main\\resources\\test.txt";
+		final String problemDataURI = "C:\\Users\\mauro\\Projects\\EquationFinder\\src\\main\\resources\\\\test.txt";
 		final ProblemData problemData = ProblemExtractor.readProblemData(Paths.get(problemDataURI));
 
 		final SearchMode searchMode = problemData.searchMode();
@@ -428,6 +428,8 @@ public class GeneticAlgorithm{
 			if(parameterCount < 2)
 				//TODO manage
 				continue;
+
+			System.out.println("valid expression: " + expression);
 
 			final double[] lowerBounds = createInitialLowerBounds(parameterCount);
 			final double[] upperBounds = createInitialUpperBounds(parameterCount);
