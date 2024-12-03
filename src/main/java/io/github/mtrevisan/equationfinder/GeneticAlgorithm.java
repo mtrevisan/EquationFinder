@@ -60,7 +60,6 @@ import java.util.function.BiFunction;
 //https://www.dtreg.com/methodology/view/gene-expression-programming
 //	https://www.dtreg.com/uploaded/downloadfile/DownloadFile_5.pdf
 //https://github.com/ShuhuaGao/geppy
-//gene manipulation: selection, replication,recombination,mutation,inversion,IS/RIS transposition
 public class GeneticAlgorithm{
 
 	private static final String[] OPERATORS;
@@ -128,274 +127,20 @@ public class GeneticAlgorithm{
 
 	private static final int MAX_GENERATIONS = 200;
 	private static final int POPULATION_SIZE = 100;
+	private static final double MATING_RATIO = 0.5;
+	private static final double MUTATION_PROBABILITY = 0.044;
+	private static final double INVERSION_PROBABILITY = 0.1;
+	private static final double TRANSPOSITION_PROBABILITY = 0.1;
+	private static final double ONE_POINT_RECOMBINATION_PROBABILITY = 0.3;
+	private static final double TWO_POINT_RECOMBINATION_PROBABILITY = 0.3;
 	private static final double CROSSOVER_PROBABILITY = 0.7;
-	private static final double MUTATION_PROBABILITY = 0.2;
 
 	private static final Random RANDOM = new Random(System.currentTimeMillis());
 
 
-	static abstract class Function{
-		abstract double evaluate(double[] params, double[] inputs);
-
-		abstract Function mutate();
-
-		abstract Function crossover(Function other);
-
-		abstract Function optimize(double[] params, double[][] inputs, double[] outputs);
-
-		abstract Function prune();
-	}
-
-	static class Parameter extends Function{
-		int index;
-
-		Parameter(final int index){
-			this.index = index;
-		}
-
-		@Override
-		double evaluate(final double[] params, final double[] inputs){
-			return params[index];
-		}
-
-		@Override
-		Function mutate(){
-			//move to next parameter (cycle)
-			return new Parameter(index + 1);
-		}
-
-		@Override
-		Function crossover(final Function other){
-			//no changes for simplicity
-			return this;
-		}
-
-		@Override
-		Function optimize(final double[] params, final double[][] inputs, final double[] outputs){
-			//the parameters will be optimized globally
-			return this;
-		}
-
-		@Override
-		Function prune(){
-			//no simplification possible for a parameter
-			return this;
-		}
-
-		@Override
-		public String toString(){
-			return "p" + index;
-		}
-	}
-
-	static class Variable extends Function{
-		int index;
-
-		Variable(final int index){
-			this.index = index;
-		}
-
-		@Override
-		double evaluate(final double[] params, final double[] inputs){
-			return inputs[index];
-		}
-
-		@Override
-		Function mutate(){
-			//change variable
-			return new Variable(index == 0? 1: 0);
-		}
-
-		@Override
-		Function crossover(final Function other){
-			//no changes for simplicity
-			return this;
-		}
-
-		@Override
-		Function optimize(final double[] params, final double[][] inputs, final double[] outputs){
-			//no optimization needed
-			return this;
-		}
-
-		@Override
-		Function prune(){
-			//no simplification possible for a variable
-			return this;
-		}
-
-		@Override
-		public String toString(){
-			return "x" + index;
-		}
-	}
-
-	static class Constant extends Function{
-		double value;
-
-		Constant(final double value){
-			this.value = value;
-		}
-
-		@Override
-		double evaluate(final double[] params, final double[] inputs){
-			return value;
-		}
-
-		@Override
-		Function mutate(){
-			//small random variation
-			return new Constant(value + (Math.random() - 0.5));
-		}
-
-		@Override
-		Function crossover(final Function other){
-			//no change
-			return this;
-		}
-
-		@Override
-		Function optimize(final double[] params, final double[][] inputs, final double[] outputs){
-			//no optimization needed
-			return this;
-		}
-
-		@Override
-		Function prune(){
-			//no simplification possible for a constant
-			return this;
-		}
-
-		@Override
-		public String toString(){
-			return String.valueOf(value);
-		}
-	}
-
-	static class Operation extends Function{
-		String operator;
-		Function left;
-		Function right;
-
-		Operation(final String operator, final Function left, final Function right){
-			this.operator = operator;
-			this.left = left;
-			this.right = right;
-		}
-
-		@Override
-		double evaluate(final double[] params, final double[] inputs){
-			final double leftValue = left.evaluate(params, inputs);
-			final double rightValue = (right != null? right.evaluate(params, inputs): 0);
-			return switch(operator){
-				case "+" -> leftValue + rightValue;
-				case "-" -> leftValue - rightValue;
-				case "*" -> leftValue * rightValue;
-				case "/" -> (rightValue != 0? leftValue / rightValue: 1);
-				case "sin" -> Math.sin(leftValue);
-				case "cos" -> Math.cos(leftValue);
-				case "exp" -> Math.exp(leftValue);
-				case "log" -> (leftValue > 0? Math.log(leftValue): 0);
-				default -> 0;
-			};
-		}
-
-		@Override
-		Function mutate(){
-			final Random random = new Random();
-			if(random.nextDouble() < 0.3){
-				//change operator randomly
-				final String[] operators = {"+", "-", "*", "/", "sin", "cos", "exp", "log"};
-				final String newOperator = operators[random.nextInt(operators.length)];
-				Function newRightFunction = null;
-				if(right != null
-						&& !newOperator.equals("sin") && !newOperator.equals("cos") && !newOperator.equals("exp") && !newOperator.equals("log"))
-					newRightFunction = right.mutate();
-				return new Operation(newOperator, left.mutate(), newRightFunction);
-			}
-			if(random.nextBoolean())
-				//mutation on the left side
-				return new Operation(operator, left.mutate(), right);
-			//mutation on the right side
-			return (right != null? new Operation(operator, left, right.mutate()): this);
-		}
-
-		@Override
-		Function crossover(final Function other){
-			if(other instanceof Operation otherOp){
-				Function newLeftFunction = left;
-				Function newRightFunction = right;
-				if(Math.random() < 0.5 && left != null)
-					//crossover on the left side
-					newLeftFunction = left.crossover(otherOp.left);
-				else if(right != null)
-					//crossover on the right side
-					newRightFunction = right.crossover(otherOp.right);
-				return new Operation(operator, newLeftFunction, newRightFunction);
-			}
-			return this;
-		}
-
-		@Override
-		Function optimize(final double[] params, final double[][] inputs, final double[] outputs){
-			//recursively optimize subtrees
-			left = left.optimize(params, inputs, outputs);
-			right = (right != null? right.optimize(params, inputs, outputs): null);
-			return this;
-		}
-
-		@Override
-		Function prune(){
-			//pruning to simplify the function
-			left = left.prune();
-			if(right != null)
-				right = right.prune();
-
-			//pruning rules
-			if(operator.equals("+") || operator.equals("-")){
-				if(right instanceof Constant && ((Constant)right).value == 0)
-					//x + 0 = x
-					return left;
-				if(left instanceof Constant && ((Constant)left).value == 0)
-					//0 + x = x
-					return right;
-			}
-			if(operator.equals("*")){
-				if(right instanceof Constant && ((Constant)right).value == 1)
-					//x * 1 = x
-					return left;
-				if(left instanceof Constant && ((Constant)left).value == 1)
-					//1 * x = x
-					return right;
-				if(right instanceof Constant && ((Constant)right).value == 0 || left instanceof Constant && ((Constant)left).value == 0)
-					// x * 0 = 0, 0 * x = 0
-					return new Constant(0);
-			}
-			if(operator.equals("/")){
-				if(right instanceof Constant && ((Constant)right).value == 1)
-					//x / 1 = x
-					return left;
-			}
-
-			//if both branches are constant, calculate the result
-			if(left instanceof Constant && (right == null || right instanceof Constant))
-				return new Constant(evaluate(new double[0], new double[0]));
-
-			return this;
-		}
-
-		@Override
-		public String toString(){
-			if(operator.equals("sin") || operator.equals("cos") || operator.equals("exp") || operator.equals("log"))
-				return operator + "(" + left + ")";
-			return "(" + left + " " + operator + " " + right + ")";
-		}
-	}
-
-
 	public static void main(final String[] args) throws IOException{
-//		final String problemDataURI = "C:\\mauro\\mine\\projects\\EquationFinder\\src\\main\\resources\\test.txt";
-		final String problemDataURI = "C:\\Users\\mauro\\Projects\\EquationFinder\\src\\main\\resources\\\\test.txt";
+		final String problemDataURI = "C:\\mauro\\mine\\projects\\EquationFinder\\src\\main\\resources\\test.txt";
+//		final String problemDataURI = "C:\\Users\\mauro\\Projects\\EquationFinder\\src\\main\\resources\\\\test.txt";
 		final ProblemData problemData = ProblemExtractor.readProblemData(Paths.get(problemDataURI));
 
 		final SearchMode searchMode = problemData.searchMode();
@@ -406,17 +151,78 @@ public class GeneticAlgorithm{
 		final String searchMetric = problemData.searchMetric();
 
 
-		//initialize population:
-		final int populationSize = 10;
+		//initialize population
 		final int maxDepth = 5;
-		final List<KarvaExpression> population = generateInitialPopulation(populationSize, maxDepth, dataInput);
+		List<KarvaExpression> population = generateInitialPopulation(POPULATION_SIZE, maxDepth, dataInput);
 
-		//evaluate population:
-		for(int i = 0; i < population.size(); i ++){
+		//initialize problem
+		List<OptimizationProblem> optimizationProblems = generateOptimizationProblems(problemData, population);
+
+		//evaluate population
+		Map<OptimizationProblem, Double> fitnessScore = evaluate(optimizationProblems);
+
+		//get best solution
+		Map.Entry<OptimizationProblem, Double> bestSolution = getBestSolution(fitnessScore);
+		System.out.println("best solution: " + bestSolution.getKey().expression + ", fitness: "+ bestSolution.getValue());
+
+		//apply genetic algorithm:
+		for(int generation = 0; bestSolution.getValue() >= 1.e-6 && generation < MAX_GENERATIONS; generation ++){
+			//select parents:
+			final int tournamentSize = (int)Math.max(optimizationProblems.size() * MATING_RATIO, 1);
+			final List<OptimizationProblem> children = tournamentSelection(optimizationProblems, tournamentSize);
+
+			//generate new offsprings (via mutation, inversion, transposition, or recombination):
+//			parents = selectParents(population, POPULATION_SIZE)
+//			for(parent1, parent2 in parents){
+//				child1, child2 = crossover(parent1, parent2, CROSSOVER_PROBABILITY)
+//				children = mutate(child1, MUTATION_PROBABILITY)
+//				children = mutate(child2, MUTATION_PROBABILITY)
+//			}
+
+			//evaluate children population
+			fitnessScore = evaluate(children);
+
+			//get best solution
+			bestSolution = getBestSolution(fitnessScore);
+			System.out.println("best solution: " + bestSolution.getKey().expression + ", fitness: "+ bestSolution.getValue());
+
+			//update population:
+			optimizationProblems.clear();
+			optimizationProblems.addAll(children);
+		}
+		//return bestSolution
+
+
+//			//crossover and mutation
+//			for(int i = 0; i < Math.max(population.size() >> 1, 1); i ++){
+//				if(population.size() > 1 && Math.random() < CROSSOVER_PROBABILITY){
+//					final KarvaExpression parent1 = newPopulation.get(RANDOM.nextInt(newPopulation.size()));
+//					final KarvaExpression parent2 = newPopulation.get(RANDOM.nextInt(newPopulation.size()));
+//					newPopulation.add(parent1.crossover(parent2));
+//				}
+//				if(population.size() == 1 || Math.random() < MUTATION_PROBABILITY){
+//					final KarvaExpression mutant = newPopulation.get(RANDOM.nextInt(newPopulation.size()))
+//						.mutate();
+//					newPopulation.add(mutant);
+//				}
+//			}
+	}
+
+	private static List<OptimizationProblem> generateOptimizationProblems(final ProblemData problemData,
+			final List<KarvaExpression> population){
+		final SearchMode searchMode = problemData.searchMode();
+//		final String expression = problemData.expression();
+		final String[] constraints = problemData.constraints();
+		final String[] dataInput = problemData.dataInput();
+		final double[][] dataTable = problemData.dataTable();
+		final String searchMetric = problemData.searchMetric();
+
+		final List<OptimizationProblem> optimizationProblems = new ArrayList<>(POPULATION_SIZE);
+		for(int i = 0; i < POPULATION_SIZE; i ++){
 			final KarvaExpression karvaExpression = population.get(i);
 
 			final String expression = KarvaToInfixConverter.convertToEquation(karvaExpression);
-			System.out.println("Karva expression " + karvaExpression + ": " + expression);
+//			System.out.println("Karva expression " + karvaExpression + ": " + expression);
 
 
 			final ModelFunction function = ExpressionExtractor.parseExpression(expression, dataInput);
@@ -429,7 +235,7 @@ public class GeneticAlgorithm{
 				//TODO manage
 				continue;
 
-			System.out.println("valid expression: " + expression);
+//			System.out.println("valid expression: " + expression);
 
 			final double[] lowerBounds = createInitialLowerBounds(parameterCount);
 			final double[] upperBounds = createInitialUpperBounds(parameterCount);
@@ -441,99 +247,29 @@ public class GeneticAlgorithm{
 			Arrays.fill(initialGuess, 1.);
 
 			final SimpleBounds bounds = new SimpleBounds(lowerBounds, upperBounds);
-			final double[] bestParameters = optimize(objectiveFunction, bounds, initialGuess, 1_000);
-
-			//TODO evaluate fit
-			final double fitness = objectiveFunction.value(bestParameters);
-			System.out.println(fitness);
+			final OptimizationProblem optimizationProblem = new OptimizationProblem(karvaExpression, expression, objectiveFunction, bounds,
+				initialGuess, 1_000);
+			optimizationProblems.add(optimizationProblem);
 		}
+		return optimizationProblems;
+	}
 
-		//S_best = getBestSolution(population)
-		//while(!stopCondition()){
-		//	parents = selectParents(population, POPULATION_SIZE)
-		//	children = empty_set
-		//	for(parent1, parent2 in parents){
-		//		child1, child2 = crossover(parent1, parent2, CROSSOVER_PROBABILITY)
-		//		children = mutate(child1, MUTATION_PROBABILITY)
-		//		children = mutate(child2, MUTATION_PROBABILITY)
-		//	}
-		//	evaluatePopulation(children)
-		//	S_best = getBestSolution(children)
-		//	population = replace(population, children)
-		//}
-		//return S_best
+	private static Map<OptimizationProblem, Double> evaluate(final List<OptimizationProblem> optimizationProblems){
+		final Map<OptimizationProblem, Double> fitnessScore = new HashMap<>(POPULATION_SIZE);
+		for(int i = 0, length = optimizationProblems.size(); i < length; i ++){
+			final OptimizationProblem optimizationProblem = optimizationProblems.get(i);
 
-		//initialize population:
-//		final List<Function> population = new ArrayList<>();
-//		population.add(new Parameter(random.nextInt(2)));
-//		population.add(new Variable(random.nextInt(2)));
-//		population.add(new Constant(random.nextInt(2)));
-//		//generate a random operation
-//		population.add(new Operation("+", new Parameter(random.nextInt(2)), new Parameter(random.nextInt(2))));
+			final double[] bestParameters = optimize(optimizationProblem);
+			optimizationProblem.setBestParameters(bestParameters);
 
-//		final List<Function> population = new ArrayList<>();
-//		for(int i = 0; i < POPULATION_SIZE; i ++){
-//			if(random.nextDouble() < 0.5){
-//				//generate a simple variable or parameter
-//				if(random.nextBoolean())
-//					//variables x0, x1, etc.
-//					population.add(new Variable(random.nextInt(2)));
-//				else
-//					//parameters p0, p1, etc.
-//					population.add(new Parameter(random.nextInt(2)));
-//			}
-//			else{
-//				//generate a random operation
-//				final Function left = new Variable(random.nextInt(2));
-//				final Function right = new Parameter(random.nextInt(2));
-//				final String[] operators = {"+", "-", "*", "/", "sin", "cos", "exp", "log"};
-//				final String operator = operators[random.nextInt(operators.length)];
-//				if(operator.equals("sin") || operator.equals("cos") || operator.equals("exp") || operator.equals("log"))
-//					//unary operators
-//					population.add(new Operation(operator, left, null));
-//				else
-//					//binary operators
-//					population.add(new Operation(operator, left, right));
-//			}
-//		}
-//
-//		//genetic algorithm
-//		for(int generation = 0; generation < MAX_GENERATIONS; generation ++){
-//			//evaluation
-//			population.sort(Comparator.comparingDouble(f -> fitness(f, inputs, outputs)));
-//
-//			//selection
-//			final List<KarvaExpression> newPopulation = new ArrayList<>();
-//			for(int i = 0; i < Math.max(population.size() >> 1, 1); i ++)
-//				newPopulation.add(tournamentSelection(population, inputs, outputs));
-//
-//			//crossover and mutation
-//			for(int i = 0; i < Math.max(population.size() >> 1, 1); i ++){
-//				if(population.size() > 1 && Math.random() < CROSSOVER_PROBABILITY){
-//					final KarvaExpression parent1 = newPopulation.get(random.nextInt(newPopulation.size()));
-//					final KarvaExpression parent2 = newPopulation.get(random.nextInt(newPopulation.size()));
-//					newPopulation.add(parent1.crossover(parent2));
-//				}
-//				if(population.size() == 1 || Math.random() < MUTATION_PROBABILITY){
-//					final KarvaExpression mutant = newPopulation.get(random.nextInt(newPopulation.size()))
-//						.mutate();
-//					newPopulation.add(mutant);
-//				}
-//			}
-//
-//			//update population
-//			population.clear();
-//			population.addAll(newPopulation);
-//
-//			//best solution
-//			final KarvaExpression best = population.getFirst();
-//			final double error = fitness(best, inputs, outputs);
-//			System.out.println("Generation " + generation + ": " + best + " with error " + error);
-//
-//			if(error < 1.e-6)
-//				//stopping criterion
-//				break;
-//		}
+			final double fitness = calculateFitness(optimizationProblem);
+			fitnessScore.put(optimizationProblem, fitness);
+		}
+		return fitnessScore;
+	}
+
+	private static double calculateFitness(final OptimizationProblem optimizationProblem){
+		return optimizationProblem.objectiveFunction.value(optimizationProblem.bestParameters);
 	}
 
 	private static double[] createInitialLowerBounds(final int parameterCount){
@@ -553,7 +289,7 @@ public class GeneticAlgorithm{
 	private static Constraint[] createComplexConstraints(final String[] constraints, final double[] lowerBounds,
 			final double[] upperBounds){
 		final List<Constraint> complexConstraints = new ArrayList<>(0);
-		for(int k = 0, constraintCount = constraints.length; k < constraintCount; k ++){
+		for(int k = 0, constraintCount = lowerBounds.length; k < constraintCount; k ++){
 			final String constraintExpression = constraints[k];
 
 			if(!ConstraintExtractor.parseBasicConstraint(constraintExpression, lowerBounds, upperBounds)){
@@ -596,6 +332,7 @@ public class GeneticAlgorithm{
 		//generate head (operators and functions)
 		int index = 0;
 		final int inputCount = inputs.length;
+		int parameterCount = 1;
 		for(int i = 0; i < h; i ++){
 			final int type = RANDOM.nextInt(3);
 			//add function to head
@@ -608,27 +345,59 @@ public class GeneticAlgorithm{
 				gene[index ++] = inputs[RANDOM.nextInt(inputCount)];
 			//add constant to head
 			else if(type == 2)
-				gene[index ++] = "p" + RANDOM.nextInt(t);
+				gene[index ++] = "p" + RANDOM.nextInt(parameterCount ++);
 		}
 
 		//generate tail (variables and constants)
 		for(int i = 0; i < t; i ++)
-			gene[index ++] = inputs[RANDOM.nextInt(inputCount)];
+			gene[index ++] = (RANDOM.nextBoolean()
+				? inputs[RANDOM.nextInt(inputCount)]
+				: "p" + RANDOM.nextInt(parameterCount));
 
 		return new KarvaExpression(gene);
 	}
 
-//	private static KarvaExpression tournamentSelection(final List<KarvaExpression> population, double[][] inputs, double[] outputs){
-//		final Random random = new Random();
-//		KarvaExpression best = null;
-//		//randomly select a subset of the population for the tournament
-//		for(int i = 0; i < 5; i ++){
-//			final KarvaExpression contender = population.get(random.nextInt(population.size()));
-//			if(best == null || fitness(contender, inputs, outputs) < fitness(best, inputs, outputs))
-//				best = contender;
-//		}
-//		return best;
-//	}
+	//https://en.wikipedia.org/wiki/Tournament_selection
+	//https://www.baeldung.com/cs/ga-tournament-selection
+	private static List<OptimizationProblem> tournamentSelection(final List<OptimizationProblem> population, final int tournamentSize){
+		final List<OptimizationProblem> winningIndividuals = new ArrayList<>(tournamentSize);
+		for(int i = 0; i < tournamentSize; i ++){
+			//pick `selectionPressure` individuals from `population` at random, with or without replacement, and add them to
+			// `competingIndividuals`
+			final List<OptimizationProblem> competingIndividuals = selectCompetingIndividuals(population);
+
+			final OptimizationProblem best = tournament(competingIndividuals);
+			winningIndividuals.add(best);
+
+			competingIndividuals.clear();
+		}
+		return winningIndividuals;
+	}
+
+	//randomly select the competing individuals
+	private static List<OptimizationProblem> selectCompetingIndividuals(final List<OptimizationProblem> population){
+		final int selectionPressure = 5;
+		final int populationSize = population.size();
+		final List<OptimizationProblem> chosenPopulation = new ArrayList<>(population);
+		final List<OptimizationProblem> competingIndividuals = new ArrayList<>(selectionPressure);
+		for(int i = 0; i < selectionPressure; i ++){
+			final OptimizationProblem chosenIndividual = chosenPopulation.get(RANDOM.nextInt(populationSize));
+			competingIndividuals.add(chosenIndividual);
+			chosenPopulation.remove(chosenIndividual);
+		}
+		return competingIndividuals;
+	}
+
+	/** Select the fittest individual (or chromosome) from a randomly selected list of individuals. */
+	private static OptimizationProblem tournament(final List<OptimizationProblem> competingIndividuals){
+		OptimizationProblem best = competingIndividuals.getFirst();
+		for(int i = 1, length = competingIndividuals.size(); i < length; i ++){
+			final OptimizationProblem next = competingIndividuals.get(i);
+			if(calculateFitness(next) < calculateFitness(best))
+				best = next;
+		}
+		return best;
+	}
 
 	private static int getParameterCount(final List<String> parameters, final String[] dataInput){
 	final Collection<String> params = new HashSet<>(parameters);
@@ -638,8 +407,12 @@ public class GeneticAlgorithm{
 }
 
 	//https://stackoverflow.com/questions/16950115/apache-commons-optimization-troubles
-	private static double[] optimize(final MultivariateFunction objectiveFunction, final SimpleBounds bounds, final double[] initialGuess,
-			final int maxIterations){
+	private static double[] optimize(final OptimizationProblem optimizationProblem){
+		final MultivariateFunction objectiveFunction = optimizationProblem.objectiveFunction;
+		final SimpleBounds bounds = optimizationProblem.bounds;
+		final double[] initialGuess = optimizationProblem.initialGuess;
+		final int maxIterations = optimizationProblem.maxIterations;
+
 		//numberOfInterpolationPoints must be in [n + 2, (n + 1) · (n + 2) / 2]
 		final BOBYQAOptimizer optimizer = new BOBYQAOptimizer(2 * initialGuess.length + 1);
 
@@ -652,6 +425,53 @@ public class GeneticAlgorithm{
 		);
 
 		return result.getPoint();
+	}
+
+	private static Map.Entry<OptimizationProblem, Double> getBestSolution(final Map<OptimizationProblem, Double> fitnessScore){
+		return fitnessScore.entrySet()
+			.stream()
+			.min(Map.Entry.comparingByValue())
+			.orElse(null);
+	}
+
+	private static KarvaExpression mutate(final KarvaExpression karvaExpression){
+		final int geneLength = karvaExpression.length();
+		final int originIndex = RANDOM.nextInt(geneLength);
+		final int length = RANDOM.nextInt(geneLength - originIndex - 1) + 1;
+		return karvaExpression.generateMutation(originIndex, length, OPERATORS);
+	}
+
+	public static KarvaExpression invert(final KarvaExpression karvaExpression){
+		final int geneLength = karvaExpression.length();
+		final int originIndex = RANDOM.nextInt(geneLength);
+		final int targetIndex = RANDOM.nextInt(geneLength - originIndex) + originIndex;
+		final int length = RANDOM.nextInt(Math.min(geneLength - targetIndex, targetIndex - originIndex) - 1) + 1;
+		return karvaExpression.generateInversion(originIndex, targetIndex, length);
+	}
+
+	public static KarvaExpression transpose(final KarvaExpression karvaExpression){
+		final int geneLength = karvaExpression.length();
+		final int length = RANDOM.nextInt(geneLength >> 1) + 1;
+		final int originIndex = RANDOM.nextInt(geneLength - length);
+		final int targetIndex = RANDOM.nextInt(geneLength - length);
+		return karvaExpression.generateTransposition(originIndex, targetIndex, length);
+	}
+
+	public static KarvaExpression[] recombineOnePoint(final KarvaExpression karvaExpression1, final KarvaExpression karvaExpression2){
+		final int gene1Length = karvaExpression1.length();
+		final int gene2Length = karvaExpression2.length();
+		final int length = Math.min(gene1Length, gene2Length);
+		final int crossoverPoint = RANDOM.nextInt(length);
+		return karvaExpression1.generateRecombinationOnePoint(karvaExpression2, crossoverPoint);
+	}
+
+	public static KarvaExpression[] recombineTwoPoint(final KarvaExpression karvaExpression1, final KarvaExpression karvaExpression2){
+		final int gene1Length = karvaExpression1.length();
+		final int gene2Length = karvaExpression2.length();
+		final int length = Math.min(gene1Length, gene2Length);
+		final int crossoverPoint1 = RANDOM.nextInt(length);
+		final int crossoverPoint2 = RANDOM.nextInt(length - crossoverPoint1 - 2) + 2;
+		return karvaExpression1.generateRecombinationTwoPoint(karvaExpression2, crossoverPoint1, crossoverPoint2);
 	}
 
 }

@@ -51,21 +51,25 @@ public class ObjectivePenalty implements MultivariateFunction{
 
 	@Override
 	public double value(final double[] params){
-		final double error = multivariateFunction.value(params);
+		try{
+			final double error = multivariateFunction.value(params);
 
-		double penalty = 0.;
-		for(int i = 0, length = constraints.length; i < length; i ++){
-			final Constraint constraint = constraints[i];
+			double penalty = 0.;
+			for(int i = 0, length = constraints.length; i < length; i ++){
+				final Constraint constraint = constraints[i];
 
-			final double penaltyError = constraint.evaluate(params);
-			if(!constraint.isFeasible(penaltyError))
-				penalty += StrictMath.pow(penaltyError, 2.);
+				final double penaltyError = constraint.evaluate(params);
+				if(!constraint.isFeasible(penaltyError))
+					penalty += StrictMath.pow(penaltyError, 2.);
 
-			if(searchMode != SearchMode.APPROXIMATE)
-				penalty += addSearchModePenalty(params);
+				if(searchMode != SearchMode.APPROXIMATE)
+					penalty += addSearchModePenalty(params);
+			}
+			return error + penalty;
 		}
-
-		return error + penalty;
+		catch(final Exception ignored){
+			return Double.POSITIVE_INFINITY;
+		}
 	}
 
 	private double addSearchModePenalty(final double[] params){
