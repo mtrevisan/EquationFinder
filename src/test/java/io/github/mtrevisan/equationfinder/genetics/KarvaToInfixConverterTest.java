@@ -32,7 +32,7 @@ class KarvaToInfixConverterTest{
 
 	@Test
 	void convertToEquation01(){
-		KarvaExpression karva = new KarvaExpression(new String[]{"+", "a", "b"});
+		KarvaExpression karva = KarvaExpression.create(new String[]{"+", "a", "b"});
 		String equation = KarvaToInfixConverter.convertToEquation(karva);
 
 		Assertions.assertEquals("(a+b)", equation);
@@ -40,7 +40,7 @@ class KarvaToInfixConverterTest{
 
 	@Test
 	void convertToEquation02(){
-		KarvaExpression karva = new KarvaExpression(new String[]{"sin", "x"});
+		KarvaExpression karva = KarvaExpression.create(new String[]{"sin", "x"});
 		String equation = KarvaToInfixConverter.convertToEquation(karva);
 
 		Assertions.assertEquals("sin(x)", equation);
@@ -48,7 +48,7 @@ class KarvaToInfixConverterTest{
 
 	@Test
 	void convertToEquation03(){
-		KarvaExpression karva = new KarvaExpression(new String[]{"hypot", "a", "b"});
+		KarvaExpression karva = KarvaExpression.create(new String[]{"hypot", "a", "b"});
 		String equation = KarvaToInfixConverter.convertToEquation(karva);
 
 		Assertions.assertEquals("hypot(a,b)", equation);
@@ -56,7 +56,7 @@ class KarvaToInfixConverterTest{
 
 	@Test
 	void convertToEquation04(){
-		KarvaExpression karva = new KarvaExpression(new String[]{"+", "a", "*", "b", "c"});
+		KarvaExpression karva = KarvaExpression.create(new String[]{"+", "a", "*", "b", "c"});
 		String equation = KarvaToInfixConverter.convertToEquation(karva);
 
 		Assertions.assertEquals("(a+(b*c))", equation);
@@ -64,7 +64,7 @@ class KarvaToInfixConverterTest{
 
 	@Test
 	void convertToEquation05(){
-		KarvaExpression karva = new KarvaExpression(new String[]{"sin", "*", "-", "+", "a", "b", "c", "d"});
+		KarvaExpression karva = KarvaExpression.create(new String[]{"sin", "*", "-", "+", "a", "b", "c", "d"});
 		String equation = KarvaToInfixConverter.convertToEquation(karva);
 
 		Assertions.assertEquals("sin(((a-b)*(c+d)))", equation);
@@ -72,7 +72,7 @@ class KarvaToInfixConverterTest{
 
 	@Test
 	void convertToEquation06(){
-		KarvaExpression karva = new KarvaExpression(new String[]{"+", "/", "*", "a", "b", "c", "d"});
+		KarvaExpression karva = KarvaExpression.create(new String[]{"+", "/", "*", "a", "b", "c", "d"});
 		String equation = KarvaToInfixConverter.convertToEquation(karva);
 
 		Assertions.assertEquals("((a/b)+(c*d))", equation);
@@ -80,7 +80,7 @@ class KarvaToInfixConverterTest{
 
 	@Test
 	void convertToEquation08(){
-		KarvaExpression karva = new KarvaExpression(new String[]{"sin", "*", "b", "*", "*", "+", "b", "a", "cos", "b", "a"});
+		KarvaExpression karva = KarvaExpression.create(new String[]{"sin", "*", "b", "*", "*", "+", "b", "a", "cos", "b", "a"});
 		String equation = KarvaToInfixConverter.convertToEquation(karva);
 
 		Assertions.assertEquals("sin((b*((b*a)*(cos(a)+b))))", equation);

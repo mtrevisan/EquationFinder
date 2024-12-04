@@ -54,6 +54,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.function.BiFunction;
 
 
@@ -61,56 +62,6 @@ import java.util.function.BiFunction;
 //	https://www.dtreg.com/uploaded/downloadfile/DownloadFile_5.pdf
 //https://github.com/ShuhuaGao/geppy
 public class GeneticAlgorithm{
-
-	private static final String[] OPERATORS;
-	static{
-		final List<String> ops = new ArrayList<>();
-		//basic operators
-		ops.add("+");
-		ops.add("-");
-		ops.add("*");
-		ops.add("/");
-
-		//trigonometric functions
-		ops.add("sin");
-		ops.add("cos");
-		ops.add("tan");
-		ops.add("asin");
-		ops.add("acos");
-		ops.add("atan");
-		ops.add("atan2");
-
-		//hyperbolic functions
-		ops.add("sinh");
-		ops.add("cosh");
-		ops.add("tanh");
-
-		//exponential and logarithmic functions
-		ops.add("exp");
-		ops.add("log");
-		ops.add("sqrt");
-		ops.add("cbrt");
-		ops.add("pow");
-		ops.add("hypot");
-
-		//other mathematical functions
-		ops.add("ceil");
-		ops.add("floor");
-		ops.add("round");
-		ops.add("floorDiv");
-		ops.add("floorMod");
-		ops.add("ceilDiv");
-		ops.add("ceilMod");
-		ops.add("abs");
-		ops.add("clamp");
-		ops.add("signum");
-
-		//logical functions
-		ops.add("max");
-		ops.add("min");
-
-		OPERATORS = ops.toArray(new String[ops.size()]);
-	}
 
 	private static final Map<String, BiFunction<ModelFunction, double[][], MultivariateFunction>> OBJECTIVE_FUNCTIONS = new HashMap<>(8);
 	static{
@@ -126,14 +77,13 @@ public class GeneticAlgorithm{
 
 
 	private static final int MAX_GENERATIONS = 200;
-	private static final int POPULATION_SIZE = 100;
+	private static final int POPULATION_SIZE = 10_000;
 	private static final double MATING_RATIO = 0.5;
 	private static final double MUTATION_PROBABILITY = 0.044;
 	private static final double INVERSION_PROBABILITY = 0.1;
 	private static final double TRANSPOSITION_PROBABILITY = 0.1;
 	private static final double ONE_POINT_RECOMBINATION_PROBABILITY = 0.3;
 	private static final double TWO_POINT_RECOMBINATION_PROBABILITY = 0.3;
-	private static final double CROSSOVER_PROBABILITY = 0.7;
 
 	private static final Random RANDOM = new Random(System.currentTimeMillis());
 
@@ -153,59 +103,84 @@ public class GeneticAlgorithm{
 
 		//initialize population
 		final int maxDepth = 5;
-		List<KarvaExpression> population = generateInitialPopulation(POPULATION_SIZE, maxDepth, dataInput);
+		final List<KarvaExpression> population = generateInitialPopulation(POPULATION_SIZE, maxDepth, dataInput);
 
 		//initialize problem
-		List<OptimizationProblem> optimizationProblems = generateOptimizationProblems(problemData, population);
+		final List<OptimizationProblem> optimizationProblems = generateOptimizationProblems(problemData, population);
 
 		//evaluate population
 		Map<OptimizationProblem, Double> fitnessScore = evaluate(optimizationProblems);
 
 		//get best solution
 		Map.Entry<OptimizationProblem, Double> bestSolution = getBestSolution(fitnessScore);
-		System.out.println("best solution: " + bestSolution.getKey().expression + ", fitness: "+ bestSolution.getValue());
+		System.out.println("best solution: " + bestSolution.getKey().expression
+			+ ", params: " + Arrays.toString(bestSolution.getKey().bestParameters)
+			+ ", fitness: "+ bestSolution.getValue());
 
 		//apply genetic algorithm:
 		for(int generation = 0; bestSolution.getValue() >= 1.e-6 && generation < MAX_GENERATIONS; generation ++){
 			//select parents:
 			final int tournamentSize = (int)Math.max(optimizationProblems.size() * MATING_RATIO, 1);
-			final List<OptimizationProblem> children = tournamentSelection(optimizationProblems, tournamentSize);
+			final List<OptimizationProblem> parents = tournamentSelection(optimizationProblems, tournamentSize);
 
 			//generate new offsprings (via mutation, inversion, transposition, or recombination):
-//			parents = selectParents(population, POPULATION_SIZE)
-//			for(parent1, parent2 in parents){
-//				child1, child2 = crossover(parent1, parent2, CROSSOVER_PROBABILITY)
-//				children = mutate(child1, MUTATION_PROBABILITY)
-//				children = mutate(child2, MUTATION_PROBABILITY)
-//			}
+			final List<KarvaExpression> newOffsprings = new ArrayList<>(0);
+			for(int i = 0, length = parents.size(); i < length; i ++){
+				final KarvaExpression gene = parents.get(i)
+					.karvaExpression;
+				if(RANDOM.nextDouble() < MUTATION_PROBABILITY){
+					final KarvaExpression mutant = mutate(gene, dataInput);
+					newOffsprings.add(mutant);
+				}
+				else if(RANDOM.nextDouble() < INVERSION_PROBABILITY){
+					final KarvaExpression mutant = invert(gene);
+					newOffsprings.add(mutant);
+				}
+				else if(RANDOM.nextDouble() < TRANSPOSITION_PROBABILITY){
+					final KarvaExpression mutant = transpose(gene);
+					if(mutant != null)
+						newOffsprings.add(mutant);
+				}
+				else if(length > 1){
+					if(RANDOM.nextDouble() < ONE_POINT_RECOMBINATION_PROBABILITY){
+						int otherIndex = RANDOM.nextInt(length);
+						while(otherIndex == i)
+							otherIndex = RANDOM.nextInt(length);
+						final KarvaExpression otherGene = parents.get(otherIndex)
+							.karvaExpression;
+						final KarvaExpression[] mutants = recombineOnePoint(gene, otherGene);
+						newOffsprings.add(mutants[0]);
+						newOffsprings.add(mutants[1]);
+					}
+					else if(RANDOM.nextDouble() < TWO_POINT_RECOMBINATION_PROBABILITY){
+						int otherIndex = RANDOM.nextInt(length);
+						while(otherIndex == i)
+							otherIndex = RANDOM.nextInt(length);
+						final KarvaExpression otherGene = parents.get(otherIndex)
+							.karvaExpression;
+						final KarvaExpression[] mutants = recombineTwoPoint(gene, otherGene);
+						newOffsprings.add(mutants[0]);
+						newOffsprings.add(mutants[1]);
+					}
+				}
+			}
 
 			//evaluate children population
-			fitnessScore = evaluate(children);
+			fitnessScore = evaluate(parents);
 
 			//get best solution
 			bestSolution = getBestSolution(fitnessScore);
-			System.out.println("best solution: " + bestSolution.getKey().expression + ", fitness: "+ bestSolution.getValue());
+			System.out.println("best solution: " + bestSolution.getKey().expression
+				+ ", params: " + Arrays.toString(bestSolution.getKey().bestParameters)
+				+ ", fitness: "+ bestSolution.getValue());
 
 			//update population:
 			optimizationProblems.clear();
-			optimizationProblems.addAll(children);
+			optimizationProblems.addAll(parents);
+			optimizationProblems.addAll(generateOptimizationProblems(problemData, newOffsprings));
 		}
+
 		//return bestSolution
-
-
-//			//crossover and mutation
-//			for(int i = 0; i < Math.max(population.size() >> 1, 1); i ++){
-//				if(population.size() > 1 && Math.random() < CROSSOVER_PROBABILITY){
-//					final KarvaExpression parent1 = newPopulation.get(RANDOM.nextInt(newPopulation.size()));
-//					final KarvaExpression parent2 = newPopulation.get(RANDOM.nextInt(newPopulation.size()));
-//					newPopulation.add(parent1.crossover(parent2));
-//				}
-//				if(population.size() == 1 || Math.random() < MUTATION_PROBABILITY){
-//					final KarvaExpression mutant = newPopulation.get(RANDOM.nextInt(newPopulation.size()))
-//						.mutate();
-//					newPopulation.add(mutant);
-//				}
-//			}
 	}
 
 	private static List<OptimizationProblem> generateOptimizationProblems(final ProblemData problemData,
@@ -217,8 +192,9 @@ public class GeneticAlgorithm{
 		final double[][] dataTable = problemData.dataTable();
 		final String searchMetric = problemData.searchMetric();
 
-		final List<OptimizationProblem> optimizationProblems = new ArrayList<>(POPULATION_SIZE);
-		for(int i = 0; i < POPULATION_SIZE; i ++){
+		final int populationSize = population.size();
+		final List<OptimizationProblem> optimizationProblems = new ArrayList<>(populationSize);
+		for(int i = 0; i < populationSize; i ++){
 			final KarvaExpression karvaExpression = population.get(i);
 
 			final String expression = KarvaToInfixConverter.convertToEquation(karvaExpression);
@@ -286,10 +262,9 @@ public class GeneticAlgorithm{
 		return bounds;
 	}
 
-	private static Constraint[] createComplexConstraints(final String[] constraints, final double[] lowerBounds,
-			final double[] upperBounds){
+	private static Constraint[] createComplexConstraints(final String[] constraints, final double[] lowerBounds, final double[] upperBounds){
 		final List<Constraint> complexConstraints = new ArrayList<>(0);
-		for(int k = 0, constraintCount = lowerBounds.length; k < constraintCount; k ++){
+		for(int k = 0, constraintCount = Math.min(constraints.length, lowerBounds.length); k < constraintCount; k ++){
 			final String constraintExpression = constraints[k];
 
 			if(!ConstraintExtractor.parseBasicConstraint(constraintExpression, lowerBounds, upperBounds)){
@@ -311,56 +286,14 @@ public class GeneticAlgorithm{
 	private static List<KarvaExpression> generateInitialPopulation(final int populationSize, final int maxDepth, final String[] inputs){
 		final List<KarvaExpression> population = new ArrayList<>();
 		for(int i = 0; i < populationSize; i ++)
-			population.add(generateKarvaExpression(maxDepth, inputs));
+			population.add(KarvaExpression.createRandom(maxDepth, KarvaToInfixConverter.OPERATOR_ARITY, inputs));
 		return population;
-	}
-
-	/**
-	 * Generates a random Karva expression.
-	 *
-	 * @param maxNumberOfOperators	The maximum number of operators.
-	 * @return	A Karva expression.
-	 */
-	private static KarvaExpression generateKarvaExpression(final int maxNumberOfOperators, final String[] inputs){
-		//ensure at least 2 nodes
-		final int h = RANDOM.nextInt(maxNumberOfOperators - 1) + 2;
-		final int maxArgs = 3;
-		final int t = h * (maxArgs - 1) + 1;
-
-		final String[] gene = new String[h + t];
-
-		//generate head (operators and functions)
-		int index = 0;
-		final int inputCount = inputs.length;
-		int parameterCount = 1;
-		for(int i = 0; i < h; i ++){
-			final int type = RANDOM.nextInt(3);
-			//add function to head
-			if(type == 0){
-				final int operatorIndex = RANDOM.nextInt(OPERATORS.length);
-				gene[index ++] = OPERATORS[operatorIndex];
-			}
-			//add variable to head
-			else if(type == 1)
-				gene[index ++] = inputs[RANDOM.nextInt(inputCount)];
-			//add constant to head
-			else if(type == 2)
-				gene[index ++] = "p" + RANDOM.nextInt(parameterCount ++);
-		}
-
-		//generate tail (variables and constants)
-		for(int i = 0; i < t; i ++)
-			gene[index ++] = (RANDOM.nextBoolean()
-				? inputs[RANDOM.nextInt(inputCount)]
-				: "p" + RANDOM.nextInt(parameterCount));
-
-		return new KarvaExpression(gene);
 	}
 
 	//https://en.wikipedia.org/wiki/Tournament_selection
 	//https://www.baeldung.com/cs/ga-tournament-selection
 	private static List<OptimizationProblem> tournamentSelection(final List<OptimizationProblem> population, final int tournamentSize){
-		final List<OptimizationProblem> winningIndividuals = new ArrayList<>(tournamentSize);
+		final Set<OptimizationProblem> winningIndividuals = new HashSet<>(Math.min(tournamentSize, population.size()));
 		for(int i = 0; i < tournamentSize; i ++){
 			//pick `selectionPressure` individuals from `population` at random, with or without replacement, and add them to
 			// `competingIndividuals`
@@ -368,20 +301,18 @@ public class GeneticAlgorithm{
 
 			final OptimizationProblem best = tournament(competingIndividuals);
 			winningIndividuals.add(best);
-
-			competingIndividuals.clear();
 		}
-		return winningIndividuals;
+		return new ArrayList<>(winningIndividuals);
 	}
 
 	//randomly select the competing individuals
 	private static List<OptimizationProblem> selectCompetingIndividuals(final List<OptimizationProblem> population){
 		final int selectionPressure = 5;
-		final int populationSize = population.size();
+		int populationSize = population.size();
 		final List<OptimizationProblem> chosenPopulation = new ArrayList<>(population);
 		final List<OptimizationProblem> competingIndividuals = new ArrayList<>(selectionPressure);
-		for(int i = 0; i < selectionPressure; i ++){
-			final OptimizationProblem chosenIndividual = chosenPopulation.get(RANDOM.nextInt(populationSize));
+		for(int i = 0; populationSize > 0 && i < selectionPressure; i ++){
+			final OptimizationProblem chosenIndividual = chosenPopulation.get(RANDOM.nextInt(populationSize --));
 			competingIndividuals.add(chosenIndividual);
 			chosenPopulation.remove(chosenIndividual);
 		}
@@ -434,43 +365,67 @@ public class GeneticAlgorithm{
 			.orElse(null);
 	}
 
-	private static KarvaExpression mutate(final KarvaExpression karvaExpression){
+	private static KarvaExpression mutate(final KarvaExpression karvaExpression, final String[] dataInput){
 		final int geneLength = karvaExpression.length();
-		final int originIndex = RANDOM.nextInt(geneLength);
+		final int originIndex = RANDOM.nextInt(geneLength - 1);
 		final int length = RANDOM.nextInt(geneLength - originIndex - 1) + 1;
-		return karvaExpression.generateMutation(originIndex, length, OPERATORS);
+		return karvaExpression.generateMutation(originIndex, length, KarvaToInfixConverter.OPERATOR_ARITY, dataInput);
 	}
 
-	public static KarvaExpression invert(final KarvaExpression karvaExpression){
-		final int geneLength = karvaExpression.length();
-		final int originIndex = RANDOM.nextInt(geneLength);
-		final int targetIndex = RANDOM.nextInt(geneLength - originIndex) + originIndex;
-		final int length = RANDOM.nextInt(Math.min(geneLength - targetIndex, targetIndex - originIndex) - 1) + 1;
-		return karvaExpression.generateInversion(originIndex, targetIndex, length);
+	private static KarvaExpression invert(final KarvaExpression karvaExpression){
+		final int maxIndex;
+		final int minIndex;
+		if(RANDOM.nextBoolean()){
+			//generate inversion inside head
+			minIndex = 0;
+			maxIndex = karvaExpression.headLength() - 1;
+		}
+		else{
+			//generate inversion inside tail
+			minIndex = karvaExpression.headLength();
+			maxIndex = karvaExpression.length() - 1;
+		}
+		final int originIndex = RANDOM.nextInt(maxIndex - minIndex) + minIndex;
+		final int length = RANDOM.nextInt(maxIndex - originIndex) + 1;
+		return karvaExpression.generateInversion(originIndex, length);
 	}
 
-	public static KarvaExpression transpose(final KarvaExpression karvaExpression){
-		final int geneLength = karvaExpression.length();
-		final int length = RANDOM.nextInt(geneLength >> 1) + 1;
-		final int originIndex = RANDOM.nextInt(geneLength - length);
-		final int targetIndex = RANDOM.nextInt(geneLength - length);
+	private static KarvaExpression transpose(final KarvaExpression karvaExpression){
+		final int maxIndex;
+		final int minIndex;
+		if(RANDOM.nextBoolean()){
+			//generate inversion inside head
+			minIndex = 0;
+			maxIndex = karvaExpression.headLength() - 1;
+		}
+		else{
+			//generate inversion inside tail
+			minIndex = karvaExpression.headLength();
+			maxIndex = karvaExpression.length() - 1;
+		}
+		if(maxIndex - (minIndex + 2) <= 0)
+			return null;
+
+		final int originIndex = RANDOM.nextInt(maxIndex - (minIndex + 2)) + minIndex;
+		final int targetIndex = RANDOM.nextInt(maxIndex - (originIndex + 1)) + (originIndex + 1);
+		final int length = RANDOM.nextInt(maxIndex - targetIndex) + 1;
 		return karvaExpression.generateTransposition(originIndex, targetIndex, length);
 	}
 
-	public static KarvaExpression[] recombineOnePoint(final KarvaExpression karvaExpression1, final KarvaExpression karvaExpression2){
+	private static KarvaExpression[] recombineOnePoint(final KarvaExpression karvaExpression1, final KarvaExpression karvaExpression2){
 		final int gene1Length = karvaExpression1.length();
 		final int gene2Length = karvaExpression2.length();
 		final int length = Math.min(gene1Length, gene2Length);
-		final int crossoverPoint = RANDOM.nextInt(length);
+		final int crossoverPoint = RANDOM.nextInt(length - 1);
 		return karvaExpression1.generateRecombinationOnePoint(karvaExpression2, crossoverPoint);
 	}
 
-	public static KarvaExpression[] recombineTwoPoint(final KarvaExpression karvaExpression1, final KarvaExpression karvaExpression2){
+	private static KarvaExpression[] recombineTwoPoint(final KarvaExpression karvaExpression1, final KarvaExpression karvaExpression2){
 		final int gene1Length = karvaExpression1.length();
 		final int gene2Length = karvaExpression2.length();
 		final int length = Math.min(gene1Length, gene2Length);
-		final int crossoverPoint1 = RANDOM.nextInt(length);
-		final int crossoverPoint2 = RANDOM.nextInt(length - crossoverPoint1 - 2) + 2;
+		final int crossoverPoint1 = RANDOM.nextInt(length - 1);
+		final int crossoverPoint2 = RANDOM.nextInt(length - crossoverPoint1 - 1) + crossoverPoint1;
 		return karvaExpression1.generateRecombinationTwoPoint(karvaExpression2, crossoverPoint1, crossoverPoint2);
 	}
 

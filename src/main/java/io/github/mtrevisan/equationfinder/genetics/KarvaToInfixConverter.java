@@ -42,7 +42,7 @@ public final class KarvaToInfixConverter{
 	private static final String COMMA = ",";
 	private static final String EMPTY = "";
 
-	private static final Map<String, Integer> OPERATOR_ARITY = new HashMap<>();
+	public static final Map<String, Integer> OPERATOR_ARITY = new HashMap<>();
 	private static final Set<String> SIMPLE_BINARY_FUNCTIONS = new HashSet<>(4);
 	static{
 		//basic operators
