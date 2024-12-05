@@ -76,8 +76,8 @@ public class GeneticAlgorithm{
 	}
 
 
-	private static final int MAX_GENERATIONS = 200;
-	private static final int POPULATION_SIZE = 10_000;
+	private static final int MAX_GENERATIONS = 1_000;
+	private static final int POPULATION_SIZE = 1_000_000;
 	private static final double MATING_RATIO = 0.5;
 	private static final double MUTATION_PROBABILITY = 0.044;
 	private static final double INVERSION_PROBABILITY = 0.1;
@@ -106,10 +106,10 @@ public class GeneticAlgorithm{
 		final List<KarvaExpression> population = generateInitialPopulation(POPULATION_SIZE, maxDepth, dataInput);
 
 		//initialize problem
-		final List<OptimizationProblem> optimizationProblems = generateOptimizationProblems(problemData, population);
+		final Map<String, OptimizationProblem> optimizationProblems = generateOptimizationProblems(problemData, population);
 
 		//evaluate population
-		Map<OptimizationProblem, Double> fitnessScore = evaluate(optimizationProblems);
+		Map<OptimizationProblem, Double> fitnessScore = evaluate(optimizationProblems.values());
 
 		//get best solution
 		Map.Entry<OptimizationProblem, Double> bestSolution = getBestSolution(fitnessScore);
@@ -121,13 +121,13 @@ public class GeneticAlgorithm{
 		for(int generation = 0; bestSolution.getValue() >= 1.e-6 && generation < MAX_GENERATIONS; generation ++){
 			//select parents:
 			final int tournamentSize = (int)Math.max(optimizationProblems.size() * MATING_RATIO, 1);
-			final List<OptimizationProblem> parents = tournamentSelection(optimizationProblems, tournamentSize);
+			final Map<String, OptimizationProblem> parents = tournamentSelection(optimizationProblems, tournamentSize);
 
 			//generate new offsprings (via mutation, inversion, transposition, or recombination):
 			final List<KarvaExpression> newOffsprings = new ArrayList<>(0);
 			for(int i = 0, length = parents.size(); i < length; i ++){
-				final KarvaExpression gene = parents.get(i)
-					.karvaExpression;
+				final OptimizationProblem parent = parents.get(i);
+				final KarvaExpression gene = parent.karvaExpressions.get(RANDOM.nextInt(parent.karvaExpressions.size()));
 				if(RANDOM.nextDouble() < MUTATION_PROBABILITY){
 					final KarvaExpression mutant = mutate(gene, dataInput);
 					newOffsprings.add(mutant);
@@ -146,8 +146,8 @@ public class GeneticAlgorithm{
 						int otherIndex = RANDOM.nextInt(length);
 						while(otherIndex == i)
 							otherIndex = RANDOM.nextInt(length);
-						final KarvaExpression otherGene = parents.get(otherIndex)
-							.karvaExpression;
+						final OptimizationProblem otherParents = parents.get(otherIndex);
+						final KarvaExpression otherGene = otherParents.karvaExpressions.get(RANDOM.nextInt(otherParents.karvaExpressions.size()));
 						final KarvaExpression[] mutants = recombineOnePoint(gene, otherGene);
 						newOffsprings.add(mutants[0]);
 						newOffsprings.add(mutants[1]);
@@ -156,8 +156,8 @@ public class GeneticAlgorithm{
 						int otherIndex = RANDOM.nextInt(length);
 						while(otherIndex == i)
 							otherIndex = RANDOM.nextInt(length);
-						final KarvaExpression otherGene = parents.get(otherIndex)
-							.karvaExpression;
+						final OptimizationProblem otherParents = parents.get(otherIndex);
+						final KarvaExpression otherGene = otherParents.karvaExpressions.get(RANDOM.nextInt(otherParents.karvaExpressions.size()));
 						final KarvaExpression[] mutants = recombineTwoPoint(gene, otherGene);
 						newOffsprings.add(mutants[0]);
 						newOffsprings.add(mutants[1]);
@@ -166,7 +166,7 @@ public class GeneticAlgorithm{
 			}
 
 			//evaluate children population
-			fitnessScore = evaluate(parents);
+			fitnessScore = evaluate(parents.values());
 
 			//get best solution
 			bestSolution = getBestSolution(fitnessScore);
@@ -176,14 +176,14 @@ public class GeneticAlgorithm{
 
 			//update population:
 			optimizationProblems.clear();
-			optimizationProblems.addAll(parents);
-			optimizationProblems.addAll(generateOptimizationProblems(problemData, newOffsprings));
+			optimizationProblems.putAll(parents);
+			optimizationProblems.putAll(generateOptimizationProblems(problemData, newOffsprings));
 		}
 
 		//return bestSolution
 	}
 
-	private static List<OptimizationProblem> generateOptimizationProblems(final ProblemData problemData,
+	private static Map<String, OptimizationProblem> generateOptimizationProblems(final ProblemData problemData,
 			final List<KarvaExpression> population){
 		final SearchMode searchMode = problemData.searchMode();
 //		final String expression = problemData.expression();
@@ -193,7 +193,7 @@ public class GeneticAlgorithm{
 		final String searchMetric = problemData.searchMetric();
 
 		final int populationSize = population.size();
-		final List<OptimizationProblem> optimizationProblems = new ArrayList<>(populationSize);
+		final Map<String, OptimizationProblem> optimizationProblems = new HashMap<>(1);
 		for(int i = 0; i < populationSize; i ++){
 			final KarvaExpression karvaExpression = population.get(i);
 
@@ -201,45 +201,54 @@ public class GeneticAlgorithm{
 //			System.out.println("Karva expression " + karvaExpression + ": " + expression);
 
 
-			final ModelFunction function = ExpressionExtractor.parseExpression(expression, dataInput);
-			final MultivariateFunction objective = OBJECTIVE_FUNCTIONS.get(searchMetric)
-				.apply(function, dataTable);
+			//subdivide into equivalence classes:
+			final OptimizationProblem existingProblem = optimizationProblems.get(expression);
+			if(existingProblem != null)
+				existingProblem.addKarvaExpression(karvaExpression);
+			else{
+				final ModelFunction function = ExpressionExtractor.parseExpression(expression, dataInput);
+				final MultivariateFunction objective = OBJECTIVE_FUNCTIONS.get(searchMetric)
+					.apply(function, dataTable);
 
-			final List<String> parameters = ExpressionExtractor.extractVariables(expression);
-			final int parameterCount = getParameterCount(parameters, dataInput);
-			if(parameterCount < 2)
-				//TODO manage
-				continue;
+				final List<String> parameters = ExpressionExtractor.extractVariables(expression);
+				final int parameterCount = getParameterCount(parameters, dataInput);
+				if(parameterCount < 2)
+					//TODO manage
+					continue;
 
-//			System.out.println("valid expression: " + expression);
+//				System.out.println("valid expression: " + expression);
 
-			final double[] lowerBounds = createInitialLowerBounds(parameterCount);
-			final double[] upperBounds = createInitialUpperBounds(parameterCount);
-			final Constraint[] complexConstraints = createComplexConstraints(constraints, lowerBounds, upperBounds);
-			final MultivariateFunction objectiveFunction = new ObjectivePenalty(objective, complexConstraints, searchMode,
-				function, dataTable);
+				final double[] lowerBounds = createInitialLowerBounds(parameterCount);
+				final double[] upperBounds = createInitialUpperBounds(parameterCount);
+				final Constraint[] complexConstraints = createComplexConstraints(constraints, lowerBounds, upperBounds);
+				final MultivariateFunction objectiveFunction = new ObjectivePenalty(objective, complexConstraints, searchMode,
+					function, dataTable);
 
-			final double[] initialGuess = new double[parameterCount];
-			Arrays.fill(initialGuess, 1.);
+				final double[] initialGuess = new double[parameterCount];
+				Arrays.fill(initialGuess, 1.);
 
-			final SimpleBounds bounds = new SimpleBounds(lowerBounds, upperBounds);
-			final OptimizationProblem optimizationProblem = new OptimizationProblem(karvaExpression, expression, objectiveFunction, bounds,
-				initialGuess, 1_000);
-			optimizationProblems.add(optimizationProblem);
+				final SimpleBounds bounds = new SimpleBounds(lowerBounds, upperBounds);
+				final OptimizationProblem optimizationProblem = new OptimizationProblem(karvaExpression, expression, objectiveFunction, bounds,
+					initialGuess, 10_000);
+				optimizationProblems.put(expression, optimizationProblem);
+			}
 		}
 		return optimizationProblems;
 	}
 
-	private static Map<OptimizationProblem, Double> evaluate(final List<OptimizationProblem> optimizationProblems){
+	private static Map<OptimizationProblem, Double> evaluate(final Iterable<OptimizationProblem> optimizationProblems){
 		final Map<OptimizationProblem, Double> fitnessScore = new HashMap<>(POPULATION_SIZE);
-		for(int i = 0, length = optimizationProblems.size(); i < length; i ++){
-			final OptimizationProblem optimizationProblem = optimizationProblems.get(i);
+		for(final OptimizationProblem optimizationProblem : optimizationProblems){
+//			System.out.println("Optimize " + optimizationProblem.expression);
 
-			final double[] bestParameters = optimize(optimizationProblem);
-			optimizationProblem.setBestParameters(bestParameters);
+			try{
+				final double[] bestParameters = optimize(optimizationProblem);
+				optimizationProblem.setBestParameters(bestParameters);
 
-			final double fitness = calculateFitness(optimizationProblem);
-			fitnessScore.put(optimizationProblem, fitness);
+				final double fitness = calculateFitness(optimizationProblem);
+				fitnessScore.put(optimizationProblem, fitness);
+			}
+			catch(final Exception ignored){}
 		}
 		return fitnessScore;
 	}
@@ -292,21 +301,23 @@ public class GeneticAlgorithm{
 
 	//https://en.wikipedia.org/wiki/Tournament_selection
 	//https://www.baeldung.com/cs/ga-tournament-selection
-	private static List<OptimizationProblem> tournamentSelection(final List<OptimizationProblem> population, final int tournamentSize){
-		final Set<OptimizationProblem> winningIndividuals = new HashSet<>(Math.min(tournamentSize, population.size()));
+	private static Map<String, OptimizationProblem> tournamentSelection(final Map<String, OptimizationProblem> optimizationProblems,
+			final int tournamentSize){
+		final Collection<OptimizationProblem> population = optimizationProblems.values();
+		final Map<String, OptimizationProblem> winningIndividuals = new HashMap<>(Math.min(tournamentSize, optimizationProblems.size()));
 		for(int i = 0; i < tournamentSize; i ++){
 			//pick `selectionPressure` individuals from `population` at random, with or without replacement, and add them to
 			// `competingIndividuals`
 			final List<OptimizationProblem> competingIndividuals = selectCompetingIndividuals(population);
 
 			final OptimizationProblem best = tournament(competingIndividuals);
-			winningIndividuals.add(best);
+			winningIndividuals.put(best.expression, best);
 		}
-		return new ArrayList<>(winningIndividuals);
+		return winningIndividuals;
 	}
 
 	//randomly select the competing individuals
-	private static List<OptimizationProblem> selectCompetingIndividuals(final List<OptimizationProblem> population){
+	private static List<OptimizationProblem> selectCompetingIndividuals(final Collection<OptimizationProblem> population){
 		final int selectionPressure = 5;
 		int populationSize = population.size();
 		final List<OptimizationProblem> chosenPopulation = new ArrayList<>(population);

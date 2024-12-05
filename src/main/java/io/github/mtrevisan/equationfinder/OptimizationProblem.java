@@ -28,10 +28,13 @@ import io.github.mtrevisan.equationfinder.genetics.KarvaExpression;
 import org.apache.commons.math3.analysis.MultivariateFunction;
 import org.apache.commons.math3.optim.SimpleBounds;
 
+import java.util.ArrayList;
+import java.util.List;
+
 
 class OptimizationProblem{
 
-	final KarvaExpression karvaExpression;
+	final List<KarvaExpression> karvaExpressions;
 	final String expression;
 	final MultivariateFunction objectiveFunction;
 	final SimpleBounds bounds;
@@ -43,12 +46,17 @@ class OptimizationProblem{
 
 	OptimizationProblem(final KarvaExpression karvaExpression, final String expression, final MultivariateFunction objectiveFunction,
 			final SimpleBounds bounds, final double[] initialGuess, final int maxIterations){
-		this.karvaExpression = karvaExpression;
+		karvaExpressions = new ArrayList<>(1);
+		karvaExpressions.add(karvaExpression);
 		this.expression = expression;
 		this.objectiveFunction = objectiveFunction;
 		this.bounds = bounds;
 		this.initialGuess = initialGuess;
 		this.maxIterations = maxIterations;
+	}
+
+	public void addKarvaExpression(final KarvaExpression karvaExpression){
+		karvaExpressions.add(karvaExpression);
 	}
 
 	public void setBestParameters(final double[] bestParameters){
