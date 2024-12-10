@@ -57,7 +57,7 @@
 		<!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-source-plugin -->
 		<maven-source-plugin.version>3.3.1</maven-source-plugin.version>
 		<!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-javadoc-plugin -->
-		<maven-javadoc-plugin.version>3.11.1</maven-javadoc-plugin.version>
+		<maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
 		<!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-surefire-plugin -->
 		<maven-surefire-plugin.version>3.5.2</maven-surefire-plugin.version>
 		<!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-compiler-plugin -->
@@ -220,6 +220,21 @@
 			<artifactId>commons-jexl3</artifactId>
 			<version>${apache.commons-jexl3.version}</version>
 		</dependency>
+
+		<!-- oj! Algorithms -->
+		<!-- https://mvnrepository.com/artifact/org.ojalgo/ojalgo -->
+<!--		<dependency>-->
+<!--			<groupId>org.ojalgo</groupId>-->
+<!--			<artifactId>ojalgo</artifactId>-->
+<!--			<version>55.0.2</version>-->
+<!--		</dependency>-->
+		<!-- Efficient Java Matrix Library (EJML) -->
+		<!-- https://mvnrepository.com/artifact/org.ejml/ejml-core -->
+<!--		<dependency>-->
+<!--			<groupId>org.ejml</groupId>-->
+<!--			<artifactId>ejml-core</artifactId>-->
+<!--			<version>0.43.1</version>-->
+<!--		</dependency>-->
 
 		<!-- JUnit -->
 		<dependency>
